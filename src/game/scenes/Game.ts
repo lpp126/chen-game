@@ -177,7 +177,7 @@ export class Game extends Scene {
     const x = note.track === 0 ? this.leftTrackX : this.rightTrackX;
     const sprite = this.add.sprite(x, 0, 'note');
     sprite.setOrigin(0.5);
-    sprite.setScale(1.1);
+    sprite.setScale(0.8);
     note.sprite = sprite;
     note.active = true;
   }
@@ -229,7 +229,7 @@ export class Game extends Scene {
         // Visual explosion effect
         this.tweens.add({
           targets: note.sprite,
-          scale: 1.8,
+          scale: 1.5,
           alpha: 0,
           duration: 200,
           onComplete: () => note.sprite?.destroy()
@@ -300,8 +300,8 @@ export class Game extends Scene {
     if (targetBottle) {
       this.tweens.add({
         targets: targetBottle,
-        scaleX: 0.95, // slightly larger than default 0.8
-        scaleY: 0.95,
+        scaleX: 0.7, // slightly larger than default 0.6
+        scaleY: 0.7,
         yoyo: true,
         duration: 100,
         ease: 'Cubic.easeOut'
@@ -430,7 +430,7 @@ export class Game extends Scene {
     
     // Create bottle images instead of graphics
     // The bottle image might need scaling depending on its actual size
-    const bottleScale = 0.8; // Adjust this value to fit your screen
+    const bottleScale = 0.6; // Adjust this value to fit your screen
     
     const leftBottle = this.add.image(this.leftTrackX, hitY, 'bottle');
     leftBottle.setOrigin(0.5, 0.5);
@@ -453,7 +453,7 @@ export class Game extends Scene {
     const height = this.cameras.main.height;
     
     this.babyFace = this.add.text(width / 2, height * 0.85, '-_-', {
-      fontSize: '64px',
+      fontSize: '48px',
       color: '#4A4443',
       fontStyle: 'bold'
     }).setOrigin(0.5);
