@@ -1,0 +1,269 @@
+{
+  "packs": [
+    {
+      "name": "City_Man_Pixel_Art_Sprite_Sheets",
+      "style": "pixel-colorful",
+      "genres": ["action", "platformer", "beat-em-up"],
+      "features": {
+        "characters": ["City Man 1", "City Man 2", "City Man 3"],
+        "character_animations": ["idle", "walk", "run", "attack", "hurt", "dead"],
+        "total_variations": 3,
+        "urban_theme": true,
+        "psd_source": true
+      },
+      "description": "【主题】都市街头 / 清版动作。【场景】现代城市街道、人行道与建筑前。【角色】3 名都市男性主角，含待机、行走、奔跑、攻击、受击、死亡等动画。【游戏主题】横版清版动作、都市犯罪与格斗向；角色驱动，含 PSD。【维度】2D。"
+    },
+    {
+      "name": "craftpix-net-436971-free-top-down-roguelike-game-kit-pixel-art",
+      "style": "pixel-colorful",
+      "genres": ["roguelike", "dungeon", "rpg"],
+      "features": {
+        "characters": true,
+        "enemies": true,
+        "terrain_tileset": true,
+        "items": true,
+        "dungeon_theme": true,
+        "topdown_view": true,
+        "complete_kit": true
+      },
+      "description": "【主题】俯视角 Roguelike 成套（Craftpix 风格）。【场景】地牢房间、走廊与首领房。【角色】主角与敌人精灵。【游戏主题】俯视角地牢 Roguelike、刷子 RPG；地砖墙 tile 与掉落物道具。【维度】2D。"
+    },
+    {
+      "name": "Free_Gangster_Pixel_Sprites",
+      "style": "pixel-colorful",
+      "genres": ["action", "crime", "shooter"],
+      "features": {
+        "characters": ["Gangster 1", "Gangster 2", "Gangster 3"],
+        "character_animations": ["idle", "idle_2", "walk", "run", "jump", "attack_1", "attack_2", "attack_3", "hurt", "dead"],
+        "total_variations": 3,
+        "crime_theme": true,
+        "psd_source": true
+      },
+      "description": "【主题】黑帮 / 犯罪动作。【场景】街头火并、巷战、都市地下势力。【角色】3 名黑帮成员，含多段攻击、奔跑、跳跃等动画。【游戏主题】犯罪动作、横版或射击、黑帮叙事向；【维度】2D。"
+    },
+    {
+      "name": "Free_Old_Cars_Pixel_Art",
+      "style": "pixel-colorful",
+      "genres": ["racing", "driving", "casual"],
+      "features": {
+        "vehicles": true,
+        "vintage_cars": true,
+        "multiple_angles": true,
+        "psd_source": true
+      },
+      "description": "【主题】复古赛车 / 老爷车。【场景】公路、城市巡游、展示视角。【角色】无人物，以经典老式汽车为主角体，含多角度车体。【游戏主题】复古驾驶、休闲竞速、车库收集与 UI 展示。【维度】2D。"
+    },
+    {
+      "name": "Free_Shinobi_Sprites_Pixel_Art",
+      "style": "pixel-colorful",
+      "genres": ["action", "platformer", "ninja"],
+      "features": {
+        "characters": ["Shinobi 1", "Shinobi 2", "Shinobi 3"],
+        "character_animations": ["idle", "walk", "run", "jump", "attack", "throw", "hurt", "dead"],
+        "total_variations": 3,
+        "ninja_theme": true,
+        "psd_source": true
+      },
+      "description": "【主题】忍者 / 和风动作。【场景】屋顶追逐、道场外、夜间潜入。【角色】3 名忍者，含投掷、攻击、死亡等动画。【游戏主题】忍者横版动作、和风潜入与平台跳跃；【维度】2D。"
+    },
+    {
+      "name": "Free_Soldier_Sprite_Sheets",
+      "style": "pixel-colorful",
+      "genres": ["action", "shooter", "military"],
+      "features": {
+        "characters": ["Soldier 1", "Soldier 2", "Soldier 3"],
+        "character_animations": ["idle", "walk", "run", "attack", "hurt", "dead"],
+        "total_variations": 3,
+        "military_theme": true,
+        "psd_source": true
+      },
+      "description": "【主题】现代军事 / 射击与动作。【场景】战场掩体、军事基地外围。【角色】3 名士兵，含射击相关动作与受击、死亡。【游戏主题】军事射击、战争横版/俯视角动作；战场与废墟场景需另配；含 PSD。【维度】2D。"
+    },
+    {
+      "name": "Free_Vampire_Pixel_Art_Sprite_Sheets",
+      "style": "pixel-colorful",
+      "genres": ["action", "horror", "platformer"],
+      "features": {
+        "characters": ["Vampire 1", "Vampire 2", "Vampire 3"],
+        "character_animations": ["idle", "walk", "run", "attack", "hurt", "dead"],
+        "total_variations": 3,
+        "horror_theme": true,
+        "psd_source": true
+      },
+      "description": "【主题】哥特恐怖 / 吸血鬼。【场景】古堡、月夜街道、阴森室内。【角色】3 名吸血鬼，含行走与攻击动画。【游戏主题】哥特恐怖、吸血鬼题材横版或轻惊悚；墓地/古堡场景需另配；含 PSD。【维度】2D。"
+    },
+    {
+      "name": "Free_Warrior_Pixel_Art_Sprite_Sheets",
+      "style": "pixel-colorful",
+      "genres": ["action", "rpg", "fantasy"],
+      "features": {
+        "characters": ["Warrior 1", "Warrior 2", "Warrior 3"],
+        "character_animations": ["idle", "walk", "run", "attack", "hurt", "dead"],
+        "total_variations": 3,
+        "fantasy_theme": true,
+        "psd_source": true
+      },
+      "description": "【主题】奇幻战士 / ARPG。【场景】野外、竞技场、地城入口。【角色】3 名近战战士，含完整战斗循环动画。【游戏主题】奇幻 ARPG、战士职业、清版或轻魂小品；【维度】2D。"
+    },
+    {
+      "name": "Free_Wizard_Sprite_Sheets",
+      "style": "pixel-colorful",
+      "genres": ["rpg", "fantasy", "action"],
+      "features": {
+        "characters": ["Wizard 1", "Wizard 2", "Wizard 3"],
+        "character_animations": ["idle", "walk", "run", "attack", "cast_spell", "hurt", "dead"],
+        "total_variations": 3,
+        "magic_theme": true,
+        "psd_source": true
+      },
+      "description": "【主题】奇幻法师 / 施法职业。【场景】塔楼、魔法阵、地下城。【角色】3 名法师，含施法、受击、死亡等。【游戏主题】奇幻 RPG、法师职业、技能驱动战斗；【维度】2D。"
+    },
+    {
+      "name": "Free_Zombie_Sprite_Sheet",
+      "style": "pixel-colorful",
+      "genres": ["action", "horror", "survival"],
+      "features": {
+        "characters": ["Zombie Man", "Zombie Woman", "Wild Zombie"],
+        "character_animations": ["idle", "walk", "attack", "hurt", "dead"],
+        "total_variations": 3,
+        "horror_theme": true,
+        "psd_source": true
+      },
+      "description": "【主题】丧尸 / 生存恐怖。【场景】感染区、城市废墟、阴暗街道。【角色】3 类丧尸（男女与狂野型），含扑咬与死亡。【游戏主题】丧尸生存、末日横版或恐怖氛围；【维度】2D。"
+    },
+    {
+      "name": "kenney_fish-pack_2",
+      "style": "flat-topdown",
+      "genres": ["casual", "simulation", "underwater"],
+      "features": {
+        "fish_sprites": true,
+        "vector_source": true,
+        "spritesheet": true,
+        "underwater_theme": true
+      },
+      "description": "【主题】海洋鱼类 / 俯视水族。【场景】鱼缸、浅海、俯视海面。【角色】多种鱼类扁平精灵，非人形。【游戏主题】俯视水族箱、海洋休闲益智、养鱼放置向；可叠蓝色水域或自绘海底；含矢量。【维度】2D（俯视）。"
+    },
+    {
+      "name": "kenney_pixel-shmup",
+      "style": "pixel-colorful",
+      "genres": ["shmup", "shooter", "arcade"],
+      "features": {
+        "player_ships": 24,
+        "environment_tiles": true,
+        "projectiles": true,
+        "tilemap_support": true,
+        "tilesheet": true
+      },
+      "description": "【主题】街机飞行射击游戏。【场景】飞机射击战斗背景。【角色】24 种自机飞船造型。【游戏主题】街机飞行、太空或隧道射击；环境 tile 与子弹/弹幕精灵成体系。【维度】2D。"
+    },
+    {
+      "name": "Minotaur_Sprite_Sheet_Pack",
+      "style": "pixel-colorful",
+      "genres": ["action", "rpg", "fantasy"],
+      "features": {
+        "characters": ["Minotaur 1", "Minotaur 2", "Minotaur 3"],
+        "character_animations": ["idle", "walk", "run", "attack", "hurt", "dead"],
+        "total_variations": 3,
+        "boss_enemy": true,
+        "fantasy_theme": true,
+        "psd_source": true
+      },
+      "description": "【主题】奇幻 Boss / 迷宫守卫。【场景】米诺斯迷宫、地下竞技场。【角色】3 款牛头人重型敌人，适合 Boss 战。【游戏主题】奇幻 Boss 战、迷宫 ARPG；【维度】2D。"
+    },
+    {
+      "name": "Ninja_Pack",
+      "style": "pixel-colorful",
+      "genres": ["action", "platformer", "ninja"],
+      "features": {
+        "characters": true,
+        "enemies": true,
+        "terrain_tileset": true,
+        "weapons": true,
+        "ninja_theme": true,
+        "complete_pack": true
+      },
+      "description": "【主题】忍者潜入与战斗。【场景】日本村落、竹林、屋檐跑酷。【角色】忍者主角与敌对忍者等。【游戏主题】忍者题材平台/动作、和风跑酷；含和风地形、场景与武器道具 tile。【维度】2D。"
+    },
+    {
+      "name": "Octopus_Jellyfish_Shark_Turtle_Sprite_Art",
+      "style": "pixel-colorful",
+      "genres": ["casual", "underwater", "adventure"],
+      "features": {
+        "creatures": ["Octopus", "Jellyfish", "Shark", "Turtle"],
+        "animations": true,
+        "underwater_theme": true,
+        "psd_source": true
+      },
+      "description": "【主题】海洋生态 / 水下休闲。【场景】珊瑚礁、开阔海域。【角色】章鱼、水母、鲨鱼、海龟四类生物动画，非人形。【游戏主题】水下休闲、海洋科普、水族箱装饰向小游戏；【维度】2D。"
+    },
+    {
+      "name": "Urban_Zombie_Sprite_Sheet",
+      "style": "pixel-colorful",
+      "genres": ["action", "horror", "survival"],
+      "features": {
+        "zombies": true,
+        "character_animations": ["idle", "walk", "attack", "hurt", "dead"],
+        "urban_theme": true,
+        "horror_theme": true,
+        "psd_source": true
+      },
+      "description": "【主题】都市丧尸爆发。【场景】现代街道、人行道与车辆旁。【角色】都市着装丧尸，含行走与攻击。【游戏主题】现代都市丧尸、恐怖横版或射击；【维度】2D。"
+    },
+    {
+      "name": "PixelAdventure_1_Free",
+      "style": "pixel-colorful",
+      "genres": ["action", "platformer"],
+      "features": {
+        "characters": ["Mask Dude", "Ninja Frog", "Pink Man", "Virtual Guy"],
+        "character_animations": ["idle", "run", "jump", "fall", "double_jump", "wall_jump", "hit"],
+        "total_variations": 4,
+        "items": ["fruits", "boxes", "checkpoints"],
+        "backgrounds": true
+      },
+      "description": "【主题】像素平台动作基础包（Pixel Adventure）。【场景】纯色背景底图，可作为关卡底色/占位；配套常用交互道具。【角色】4 名风格一致的平台角色，含待机、奔跑、跳跃/下落、二段跳、蹬墙跳、受击等动画条（文件名已带 frames 信息）。【道具】水果收集物、箱子（待机/受击/破碎）、起点/终点/旗帜检查点等。【游戏主题】横版平台跳跃、动作闯关、收集与检查点机制；【维度】2D。"
+    }
+  ],
+  "selection_guide": {
+    "action": {
+      "primary": ["City_Man_Pixel_Art_Sprite_Sheets", "Free_Gangster_Pixel_Sprites", "Free_Soldier_Sprite_Sheets", "Free_Warrior_Pixel_Art_Sprite_Sheets", "Ninja_Pack", "PixelAdventure_1_Free"],
+      "enemies": ["Free_Zombie_Sprite_Sheet", "Minotaur_Sprite_Sheet_Pack", "Urban_Zombie_Sprite_Sheet"]
+    },
+    "rpg": {
+      "characters": ["Free_Warrior_Pixel_Art_Sprite_Sheets", "Free_Wizard_Sprite_Sheets", "Minotaur_Sprite_Sheet_Pack"]
+    },
+    "roguelike": {
+      "primary": ["craftpix-net-436971-free-top-down-roguelike-game-kit-pixel-art"]
+    },
+    "shmup": {
+      "primary": "kenney_pixel-shmup"
+    },
+    "shooter": {
+      "primary": ["kenney_pixel-shmup", "Free_Soldier_Sprite_Sheets", "Free_Gangster_Pixel_Sprites"]
+    },
+    "racing": {
+      "alternative": "Free_Old_Cars_Pixel_Art"
+    },
+    "driving": {
+      "alternative": "Free_Old_Cars_Pixel_Art"
+    },
+    "horror": {
+      "primary": ["Free_Zombie_Sprite_Sheet", "Urban_Zombie_Sprite_Sheet", "Free_Vampire_Pixel_Art_Sprite_Sheets"]
+    },
+    "ninja": {
+      "primary": ["Ninja_Pack", "Free_Shinobi_Sprites_Pixel_Art"]
+    },
+    "underwater": {
+      "primary": ["Octopus_Jellyfish_Shark_Turtle_Sprite_Art", "kenney_fish-pack_2"]
+    },
+    "military": {
+      "primary": ["Free_Soldier_Sprite_Sheets"]
+    },
+    "fantasy": {
+      "primary": ["Free_Warrior_Pixel_Art_Sprite_Sheets", "Free_Wizard_Sprite_Sheets"],
+      "enemies": "Minotaur_Sprite_Sheet_Pack"
+    },
+    "urban": {
+      "characters": "City_Man_Pixel_Art_Sprite_Sheets"
+    }
+  }
+}

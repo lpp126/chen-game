@@ -1,0 +1,8 @@
+[build_info]
+enable-ccover = 
+source-with-patch = no
+the-build-args-of-CC = 
+module = baidu/miaoda/template-freestyle
+revision = 
+git_url = ssh://chengxuyi@icode.baidu.com:8235/baidu/miaoda/template-freestyle
+git_version = 14eaca603269c69966acb8de9bee7c229d03a3bf
