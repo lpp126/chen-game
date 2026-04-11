@@ -52,8 +52,8 @@ export class Game extends Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
     
-    this.leftTrackX = width * 0.3;
-    this.rightTrackX = width * 0.7;
+    this.leftTrackX = width * 0.18;
+    this.rightTrackX = width * 0.82;
     this.hitY = height * 0.8;
 
     this.createBackground();
@@ -560,8 +560,8 @@ export class Game extends Scene {
     const height = this.cameras.main.height;
     
     const trackWidth = 2;
-    const leftX = width * 0.3;
-    const rightX = width * 0.7;
+    const leftX = this.leftTrackX;
+    const rightX = this.rightTrackX;
 
     const g = this.add.graphics();
     g.lineStyle(trackWidth, 0x4A4443, 0.1);

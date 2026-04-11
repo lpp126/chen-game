@@ -28,7 +28,7 @@ export const HUD: React.FC = () => {
       {/* 数据状态 */}
       <div className="flex justify-between w-full max-w-sm mx-auto px-2">
         <div className="flex items-center gap-1 text-[#4A4443] font-bold bg-white/60 px-3 py-1 rounded-full text-sm">
-          <span className="w-3 h-3 rounded-full bg-[#B2CEE5] inline-block" />
+          <span className="w-3 h-3 rounded-full bg-[#FADCD9] inline-block" />
           {notesCollected}
         </div>
         <div className="flex items-center text-[#FADCD9] font-bold bg-white/60 px-3 py-1 rounded-full text-sm">
