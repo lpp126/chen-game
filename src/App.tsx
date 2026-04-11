@@ -12,12 +12,15 @@ import { LevelSelectScreen } from './components/LevelSelectScreen';
 
 export default function App() {
   const initialized = useRef(false);
-  const [scale, setScale] = useState(1);
+  const [dimensions, setDimensions] = useState({ scale: 1, width: 750, height: 1330 });
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
       const scaleX = window.innerWidth / 750;
-      setScale(scaleX); // 以宽度 750px 作为绝对基准
+      const targetHeight = Math.round(window.innerHeight / scaleX);
+      setDimensions({ scale: scaleX, width: 750, height: targetHeight });
+      setIsReady(true);
     };
     window.addEventListener('resize', handleResize);
     handleResize();
@@ -25,14 +28,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (initialized.current) return;
+    if (!isReady || initialized.current) return;
     initialized.current = true;
 
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: 'game-container',
-      width: 750,
-      height: 1330,
+      width: dimensions.width,
+      height: dimensions.height,
       scene: [Boot, Game, GameOver],
       scale: {
         mode: Phaser.Scale.FIT,
@@ -51,17 +54,18 @@ export default function App() {
       game.destroy(true);
       initialized.current = false;
     };
-  }, []);
+  }, [isReady, dimensions.width, dimensions.height]);
+
+  if (!isReady) return null;
 
   return (
-    <div className="relative w-screen h-[100dvh] overflow-hidden bg-black flex justify-center items-center">
+    <div className="relative w-screen h-[100dvh] overflow-hidden bg-black">
       <div 
-        className="relative bg-[#F9F6F0] overflow-hidden shrink-0"
+        className="absolute top-0 left-0 bg-[#F9F6F0] overflow-hidden origin-top-left"
         style={{
-          width: '750px',
-          height: '1330px',
-          transform: `scale(${scale})`,
-          transformOrigin: 'center center'
+          width: `${dimensions.width}px`,
+          height: `${dimensions.height}px`,
+          transform: `scale(${dimensions.scale})`
         }}
       >
         {/* Phaser Container */}

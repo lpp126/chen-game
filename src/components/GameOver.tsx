@@ -1,12 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 
 export const GameOver: React.FC = () => {
-  const { status, stats, stars, resetGame } = useGameStore();
+  const { status, stats, stars, goLevelSelect } = useGameStore();
+  const [showToast, setShowToast] = useState(false);
 
   if (status !== 'gameover') return null;
 
   const hitRate = stats.total > 0 ? ((stats.perfect + stats.good) / stats.total) * 100 : 0;
+
+  const handleNextLevel = () => {
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2000);
+  };
 
   return (
     <div className="absolute inset-0 z-50 bg-[#F9F6F0]/95 flex flex-col items-center justify-center p-8 pointer-events-auto backdrop-blur-sm">
@@ -50,12 +56,26 @@ export const GameOver: React.FC = () => {
         </div>
       </div>
 
-      <button 
-        onClick={resetGame}
-        className="px-10 py-4 bg-[#B2CEE5] text-white rounded-full text-xl font-bold shadow-lg transform active:scale-95 transition-all hover:bg-[#B2CEE5]/90"
-      >
-        返回主页
-      </button>
+      <div className="flex flex-col gap-4 w-full max-w-[16rem]">
+        <button 
+          onClick={handleNextLevel}
+          className="w-full py-4 bg-gradient-to-r from-[#FADCD9] to-[#B2CEE5] text-white rounded-full text-xl font-bold shadow-lg transform active:scale-95 transition-all hover:opacity-90"
+        >
+          下一关
+        </button>
+        <button 
+          onClick={goLevelSelect}
+          className="w-full py-4 bg-white text-[#4A4443] border-2 border-[#FADCD9]/50 rounded-full text-xl font-bold shadow-sm transform active:scale-95 transition-all hover:bg-gray-50"
+        >
+          返回主页
+        </button>
+      </div>
+
+      {showToast && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-6 py-3 rounded-full text-base font-medium shadow-2xl z-50 animate-bounce">
+          下一关暂未开放
+        </div>
+      )}
     </div>
   );
 };
