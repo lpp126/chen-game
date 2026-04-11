@@ -36,7 +36,7 @@ export default function App() {
       height: 1330,
       scene: [Boot, Game, GameOver],
       scale: {
-        mode: Phaser.Scale.FIT,
+        mode: Phaser.Scale.NONE,
         autoCenter: Phaser.Scale.CENTER_BOTH
       },
       backgroundColor: '#F9F6F0',
