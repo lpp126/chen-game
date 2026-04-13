@@ -1,5 +1,4 @@
 import { Scene } from 'phaser';
-import { EventBus } from '../EventBus';
 import { useGameStore } from '../../store/gameStore';
 
 const BPM = 74; // Adjusted to match a slow ballad pace
@@ -83,14 +82,10 @@ export class Game extends Scene {
     // Subscribe to state changes from React
     this.storeUnsubscribe = useGameStore.subscribe(
       (state) => {
-        if (state.status === 'playing' && !this.isPlaying) {
+        if (state.status === 'playing' && state.currentLevelId === 1 && !this.isPlaying) {
           this.startGame();
-        } else if ((state.status === 'gameover' || state.status === 'start') && this.isPlaying) {
+        } else if ((state.status === 'gameover' || state.status === 'start' || state.currentLevelId !== 1) && this.isPlaying) {
           this.stopGame();
-        } else if (state.status === 'soothing' && !this.isPaused) {
-          this.pauseGameForSoothe();
-        } else if (state.status === 'playing' && this.isPaused) {
-          this.resumeGameAfterSoothe();
         }
         
         // Update visuals based on fullness
@@ -246,6 +241,20 @@ export class Game extends Scene {
   private recordHitResult(type: 'perfect' | 'good' | 'oops', track: 0 | 1) {
     const store = useGameStore.getState();
     store.recordHit(type);
+    const fresh = useGameStore.getState();
+    if (fresh.status === 'gameover') {
+      const acc = fresh.stats.total > 0 ? (fresh.stats.perfect + fresh.stats.good) / fresh.stats.total : 0;
+      const collectRatio = fresh.stats.totalNotesSpawned > 0 ? fresh.notesCollected / fresh.stats.totalNotesSpawned : 0;
+      let stars = 1;
+      if (acc >= 0.9 && collectRatio >= 0.6) stars = 3;
+      else if (acc >= 0.7) stars = 2;
+      store.completeLevel({
+        stars,
+        orangesCollected: fresh.runOranges,
+        orangeTotal: 0
+      });
+      return;
+    }
     
     const x = track === 0 ? this.leftTrackX : this.rightTrackX;
     this.showFloatingText(type, x, this.hitY - 50);
@@ -380,7 +389,7 @@ export class Game extends Scene {
     store.spawnNoteDrop();
 
     const x = track === 0 ? this.leftTrackX : this.rightTrackX;
-    const drop = this.add.sprite(x + Phaser.Math.Between(-30, 30), this.hitY - 20, 'milk-drop');
+    const drop = this.add.sprite(x + Phaser.Math.Between(-30, 30), this.hitY - 20, 'blue-drop');
     drop.setInteractive();
     
     // Float upwards slowly
@@ -401,7 +410,9 @@ export class Game extends Scene {
     });
 
     drop.on('pointerdown', () => {
+      const before = useGameStore.getState().runOranges;
       store.collectNoteDrop();
+      const after = useGameStore.getState().runOranges;
       
       // Feedback
       this.tweens.killTweensOf(drop);
@@ -421,6 +432,31 @@ export class Game extends Scene {
         duration: 500,
         onComplete: () => t.destroy()
       });
+
+      const bubble = this.add.sprite(drop.x, drop.y - 30, 'pink-bubble').setScale(0.9);
+      this.tweens.add({
+        targets: bubble,
+        x: 70,
+        y: 70,
+        alpha: 0.1,
+        duration: 700,
+        onComplete: () => bubble.destroy()
+      });
+
+      if (after > before) {
+        const orangeTip = this.add.text(this.cameras.main.width / 2, this.hitY - 160, '🍊 +1', {
+          fontSize: '36px',
+          color: '#f59e0b',
+          fontStyle: 'bold'
+        }).setOrigin(0.5);
+        this.tweens.add({
+          targets: orangeTip,
+          y: orangeTip.y - 40,
+          alpha: 0,
+          duration: 700,
+          onComplete: () => orangeTip.destroy()
+        });
+      }
     });
   }
 
@@ -482,6 +518,7 @@ export class Game extends Scene {
     this.notes.forEach(n => { if (n.sprite) n.sprite.destroy(); });
     this.babyFace.setText('-_-');
     this.babyFace.setColor('#4A4443');
+    useGameStore.getState().setRunOrangeTotal(0);
     console.log('Game Started');
   }
 
@@ -493,42 +530,6 @@ export class Game extends Scene {
       this.bgm.stop();
     }
     console.log('Game Stopped');
-  }
-
-  private pauseGameForSoothe() {
-    this.isPaused = true;
-    this.pauseTime = this.time.now;
-    
-    if (this.bgm && this.bgm.isPlaying) {
-       // Reduce volume to 30%
-       this.tweens.add({
-         targets: this.bgm,
-         volume: 0.3,
-         duration: 500
-       });
-    }
-
-    this.babyFace.setText('T_T');
-    this.babyFace.setColor('#B2CEE5');
-    console.log('Game Paused for Soothe');
-  }
-
-  private resumeGameAfterSoothe() {
-    this.isPaused = false;
-    this.pausedDuration += (this.time.now - this.pauseTime);
-    
-    if (this.bgm && this.bgm.isPlaying) {
-       // Restore volume
-       this.tweens.add({
-         targets: this.bgm,
-         volume: 1.0,
-         duration: 500
-       });
-    }
-
-    this.babyFace.setText('-_-');
-    this.babyFace.setColor('#4A4443');
-    console.log('Game Resumed');
   }
 
   private createBackground() {

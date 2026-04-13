@@ -1,6 +1,4 @@
 import { Scene } from 'phaser';
-import { EventBus } from '../EventBus';
-import { useGameStore } from '../../store/gameStore';
 
 export class Boot extends Scene {
   constructor() {
@@ -40,10 +38,16 @@ export class Boot extends Scene {
     g.generateTexture('note', 60, 60);
     g.clear();
 
-    // Star/Collectable drop
-    g.fillStyle(0xFADCD9, 1);
+    // Blue milk drop
+    g.fillStyle(0x6ba8ff, 1);
     g.fillCircle(20, 20, 20);
-    g.generateTexture('milk-drop', 40, 40);
+    g.generateTexture('blue-drop', 40, 40);
+    g.clear();
+
+    // Pink bubble for task progress
+    g.fillStyle(0xF8A7D8, 1);
+    g.fillCircle(16, 16, 16);
+    g.generateTexture('pink-bubble', 32, 32);
     g.clear();
 
     // 可以在这里生成更多所需的贴图

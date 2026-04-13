@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { Boot } from './game/scenes/Boot';
 import { Game } from './game/scenes/Game';
@@ -6,13 +6,17 @@ import { GameOver } from './game/scenes/GameOver';
 import { HUD } from './components/HUD';
 import { StartScreen } from './components/StartScreen';
 import { GameOver as GameOverUI } from './components/GameOver';
-import { SootheScreen } from './components/SootheScreen';
 import { HomeScreen } from './components/HomeScreen';
 import { LevelSelectScreen } from './components/LevelSelectScreen';
+import { PlaceholderLevelGame } from './components/PlaceholderLevelGame';
+import { OrangeShopScreen } from './components/OrangeShopScreen';
+import { Level2CrawlGame } from './components/Level2CrawlGame';
+import { useGameStore } from './store/gameStore';
 
 export default function App() {
   const initialized = useRef(false);
   const [scale, setScale] = useState(1);
+  const { status, currentLevelId, hydrateCloudSave } = useGameStore();
 
   useEffect(() => {
     const handleResize = () => {
@@ -54,6 +58,10 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    void hydrateCloudSave();
+  }, [hydrateCloudSave]);
+
   return (
     <div className="relative w-screen h-[100dvh] overflow-hidden bg-black flex justify-center items-center">
       <div 
@@ -66,14 +74,16 @@ export default function App() {
         }}
       >
         {/* Phaser Container */}
-        <div id="game-container" className="absolute inset-0 z-0" />
+        <div id="game-container" className={`absolute inset-0 z-0 ${status === 'playing' && currentLevelId === 1 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} />
         
         {/* React UI Overlays */}
         <HomeScreen />
         <LevelSelectScreen />
+        <OrangeShopScreen />
         <StartScreen />
         <HUD />
-        <SootheScreen />
+        <Level2CrawlGame />
+        <PlaceholderLevelGame />
         <GameOverUI />
       </div>
     </div>
