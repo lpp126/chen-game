@@ -11,6 +11,7 @@ import { LevelSelectScreen } from './components/LevelSelectScreen';
 import { PlaceholderLevelGame } from './components/PlaceholderLevelGame';
 import { OrangeShopScreen } from './components/OrangeShopScreen';
 import { Level2CrawlGame } from './components/Level2CrawlGame';
+import { LevelIntroScreen } from './components/LevelIntroScreen';
 import { useGameStore } from './store/gameStore';
 
 export default function App() {
@@ -80,6 +81,7 @@ export default function App() {
         <HomeScreen />
         <LevelSelectScreen />
         <OrangeShopScreen />
+        <LevelIntroScreen />
         <StartScreen />
         <HUD />
         <Level2CrawlGame />

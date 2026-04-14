@@ -2,6 +2,11 @@ import React from 'react';
 import { useGameStore } from '../store/gameStore';
 import { LEVELS } from '../data/levels';
 
+// DEV ONLY:
+// 临时开放所有关卡，方便开发测试。
+// 发布前请改回 false，恢复“上一关通关后解锁下一关”的正式规则。
+const DEV_UNLOCK_ALL_LEVELS = true;
+
 export const LevelSelectScreen: React.FC = () => {
   const {
     status,
@@ -50,7 +55,7 @@ export const LevelSelectScreen: React.FC = () => {
 
       <div className="w-full max-w-[22rem] grid grid-cols-2 gap-3 pb-24">
         {LEVELS.map((level) => {
-          const unlocked = adminMode || saveData.unlockedLevels.includes(level.levelId);
+          const unlocked = DEV_UNLOCK_ALL_LEVELS || adminMode || saveData.unlockedLevels.includes(level.levelId);
           const rec = saveData.levels[String(level.levelId)];
           return (
             <button

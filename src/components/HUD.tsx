@@ -1,9 +1,23 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { PauseMenu } from './PauseMenu';
 
 export const HUD: React.FC = () => {
-  const { status, currentLevelId, fullness, combo, notesCollected, runOranges, pinkBubbles, adminMode, restartCurrentLevel, goLevelSelect, testCompleteLevel } = useGameStore();
-  const [showPause, setShowPause] = useState(false);
+  const {
+    status,
+    currentLevelId,
+    gameplayPaused,
+    fullness,
+    combo,
+    notesCollected,
+    runOranges,
+    pinkBubbles,
+    adminMode,
+    restartCurrentLevel,
+    goLevelSelect,
+    testCompleteLevel,
+    setGameplayPaused
+  } = useGameStore();
   const [showAdminTools, setShowAdminTools] = useState(false);
 
   if (status !== 'playing' || currentLevelId !== 1) return null;
@@ -24,7 +38,7 @@ export const HUD: React.FC = () => {
           <img src="https://miaoda-conversation-file.cdn.bcebos.com/user-avwkn2g7m9ds/conv-avx47of1d0cg/20260411/file-avybfccaefi8.jpg" alt="橙子" className="w-5 h-5 rounded-full object-cover" />
           <span className="text-[#4A4443] font-bold text-sm">{runOranges}</span>
         </div>
-        <button onClick={() => setShowPause(true)} className="pointer-events-auto px-3 py-1 bg-white/80 rounded-full text-xs">暂停</button>
+        <button onClick={() => setGameplayPaused(true)} className="pointer-events-auto px-3 py-1 bg-white/80 rounded-full text-xs">暂停</button>
       </div>
 
       <div className="flex justify-between w-full max-w-sm mx-auto px-2">
@@ -54,15 +68,14 @@ export const HUD: React.FC = () => {
         </div>
       )}
 
-      {showPause && (
-        <div className="fixed inset-0 z-[80] bg-black/40 pointer-events-auto flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-4 w-56 space-y-2 text-sm">
-            <button onClick={() => setShowPause(false)} className="w-full bg-[#FADCD9] text-white py-2 rounded-xl">继续游戏</button>
-            <button onClick={restartCurrentLevel} className="w-full bg-gray-100 py-2 rounded-xl">重新开始</button>
-            <button onClick={goLevelSelect} className="w-full bg-gray-100 py-2 rounded-xl">返回主页</button>
-            {adminMode && <button onClick={testCompleteLevel} className="w-full bg-red-50 py-2 rounded-xl">测试通关</button>}
-          </div>
-        </div>
+      {gameplayPaused && (
+        <PauseMenu
+          adminMode={adminMode}
+          onContinue={() => setGameplayPaused(false)}
+          onRestart={restartCurrentLevel}
+          onGoHome={goLevelSelect}
+          onAdminComplete={testCompleteLevel}
+        />
       )}
     </div>
   );

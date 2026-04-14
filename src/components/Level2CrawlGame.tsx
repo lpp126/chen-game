@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { PauseMenu } from './PauseMenu';
 
 type Point = { x: number; y: number };
 
@@ -55,11 +56,14 @@ export const Level2CrawlGame: React.FC = () => {
   const {
     status,
     currentLevelId,
+    gameplayPaused,
+    setGameplayPaused,
     completeLevel,
     runOranges,
     setRunOrangeTotal,
     adminMode,
     restartCurrentLevel,
+    goLevelSelect,
     goNextLevel
   } = useGameStore();
 
@@ -98,7 +102,7 @@ export const Level2CrawlGame: React.FC = () => {
     let raf = 0;
     const step = () => {
       setPath((cur) => {
-        if (!cur.length || standingMode) return cur;
+        if (!cur.length || standingMode || gameplayPaused) return cur;
         const next = cur[0];
         setPlayer((p) => {
           const dx = next.x - p.x;
@@ -116,22 +120,23 @@ export const Level2CrawlGame: React.FC = () => {
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [isActive, player.x, player.y, standingMode]);
+  }, [isActive, player.x, player.y, standingMode, gameplayPaused]);
 
   useEffect(() => {
     if (!isActive) return;
+    if (gameplayPaused) return;
     const t = window.setInterval(() => {
       setFootprints((f) => f.map((v) => ({ ...v, ttl: v.ttl - 0.08 })).filter((v) => v.ttl > 0));
     }, 60);
     return () => window.clearInterval(t);
-  }, [isActive]);
+  }, [isActive, gameplayPaused]);
 
   useEffect(() => {
     if (!isActive) return;
-    if (!standingMode && Math.hypot(player.x - exitPos.x, player.y - exitPos.y) < 36) {
+    if (!gameplayPaused && !standingMode && Math.hypot(player.x - exitPos.x, player.y - exitPos.y) < 36) {
       setStandingMode(true);
     }
-  }, [player, isActive, standingMode, exitPos.x, exitPos.y]);
+  }, [player, isActive, standingMode, exitPos.x, exitPos.y, gameplayPaused]);
 
   const straightRoute = (from: Point, to: Point): Point[] | null => {
     const sx = Math.floor((from.x - OFFSET_X) / CELL);
@@ -230,6 +235,12 @@ export const Level2CrawlGame: React.FC = () => {
           )}
         </div>
       )}
+      <button
+        onClick={() => setGameplayPaused(true)}
+        className="absolute right-4 top-3 z-20 px-3 py-1 bg-white/85 rounded-full text-xs"
+      >
+        暂停
+      </button>
 
       <div
         ref={stageRef}
@@ -244,13 +255,13 @@ export const Level2CrawlGame: React.FC = () => {
           dragRef.current = { dragging: true, moved: false, sx: e.clientX, sy: e.clientY };
         }}
         onPointerMove={(e) => {
-          if (!dragRef.current.dragging || standingMode) return;
+          if (!dragRef.current.dragging || standingMode || gameplayPaused) return;
           const dx = e.clientX - dragRef.current.sx;
           const dy = e.clientY - dragRef.current.sy;
           if (Math.abs(dx) + Math.abs(dy) > 6) dragRef.current.moved = true;
         }}
         onPointerUp={(e) => {
-          if (!dragRef.current.moved && !standingMode) handleTap(e.clientX, e.clientY);
+          if (!dragRef.current.moved && !standingMode && !gameplayPaused) handleTap(e.clientX, e.clientY);
           dragRef.current.dragging = false;
         }}
       >
@@ -283,7 +294,7 @@ export const Level2CrawlGame: React.FC = () => {
 
       {toast && <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-black/60 text-white px-4 py-2 rounded-full z-30">{toast}</div>}
 
-      {standingMode && (
+      {standingMode && !gameplayPaused && (
         <div
           className="absolute inset-0 z-40 bg-black/25 flex flex-col items-center justify-center"
           onTouchStart={(e) => setSwipeStartY(e.touches[0].clientY)}
@@ -306,6 +317,16 @@ export const Level2CrawlGame: React.FC = () => {
           <div className="text-6xl animate-bounce">⬆️</div>
           <p className="mt-3 text-white font-bold">向上轻扫，完成站立</p>
         </div>
+      )}
+
+      {gameplayPaused && (
+        <PauseMenu
+          adminMode={adminMode}
+          onContinue={() => setGameplayPaused(false)}
+          onRestart={restartCurrentLevel}
+          onGoHome={goLevelSelect}
+          onAdminComplete={adminDirectPass}
+        />
       )}
     </div>
   );

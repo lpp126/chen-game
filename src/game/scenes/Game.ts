@@ -87,6 +87,12 @@ export class Game extends Scene {
         } else if ((state.status === 'gameover' || state.status === 'start' || state.currentLevelId !== 1) && this.isPlaying) {
           this.stopGame();
         }
+
+        if (state.gameplayPaused) {
+          this.pauseGame();
+        } else {
+          this.resumeGame();
+        }
         
         // Update visuals based on fullness
         this.updateBottleLiquid(state.fullness);
@@ -524,12 +530,31 @@ export class Game extends Scene {
 
   private stopGame() {
     this.isPlaying = false;
+    this.isPaused = false;
     this.notes.forEach(n => { if (n.sprite) n.sprite.destroy(); });
     
     if (this.bgm && this.bgm.isPlaying) {
       this.bgm.stop();
     }
     console.log('Game Stopped');
+  }
+
+  private pauseGame() {
+    if (!this.isPlaying || this.isPaused) return;
+    this.isPaused = true;
+    this.pauseTime = this.time.now;
+    if (this.bgm && this.bgm.isPlaying) {
+      this.bgm.pause();
+    }
+  }
+
+  private resumeGame() {
+    if (!this.isPlaying || !this.isPaused) return;
+    this.isPaused = false;
+    this.pausedDuration += this.time.now - this.pauseTime;
+    if (this.bgm && this.bgm.isPaused) {
+      this.bgm.resume();
+    }
   }
 
   private createBackground() {

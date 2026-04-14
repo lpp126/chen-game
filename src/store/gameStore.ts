@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { LEVELS } from '../data/levels';
 
-export type PageStatus = 'home' | 'level_select' | 'start' | 'playing' | 'gameover' | 'orange_shop';
+export type PageStatus = 'home' | 'level_select' | 'level_intro' | 'start' | 'playing' | 'gameover' | 'orange_shop';
 
 export interface GameStats {
   perfect: number;
@@ -93,6 +93,7 @@ const safeSave = (key: string, data: SaveData) => {
 interface GameState {
   status: PageStatus;
   currentLevelId: number;
+  gameplayPaused: boolean;
   adminMode: boolean;
   showAdminLogin: boolean;
   adminExitCount: number;
@@ -114,8 +115,10 @@ interface GameState {
   goLevelSelect: () => void;
   goOrangeShop: () => void;
   enterLevelStart: (levelId: number) => void;
+  proceedToStartScreen: () => void;
   startGame: () => void;
   restartCurrentLevel: () => void;
+  setGameplayPaused: (paused: boolean) => void;
 
   showAdminLoginModal: (show: boolean) => void;
   loginAdmin: (username: string, password: string) => boolean;
@@ -159,6 +162,7 @@ export const useGameStore = create<GameState>((set, get) => {
   return {
     status: 'home',
     currentLevelId: 1,
+    gameplayPaused: false,
     adminMode,
     showAdminLogin: false,
     adminExitCount: parsedSession.exitCount ?? 0,
@@ -174,10 +178,11 @@ export const useGameStore = create<GameState>((set, get) => {
     placeholderProgress: 0,
     playerSlot,
 
-    goHome: () => set({ status: 'home' }),
-    goLevelSelect: () => set({ status: 'level_select' }),
-    goOrangeShop: () => set({ status: 'orange_shop' }),
-    enterLevelStart: (levelId) => set({ status: 'start', currentLevelId: levelId }),
+    goHome: () => set({ status: 'home', gameplayPaused: false }),
+    goLevelSelect: () => set({ status: 'level_select', gameplayPaused: false }),
+    goOrangeShop: () => set({ status: 'orange_shop', gameplayPaused: false }),
+    enterLevelStart: (levelId) => set({ status: 'level_intro', currentLevelId: levelId, gameplayPaused: false }),
+    proceedToStartScreen: () => set({ status: 'start', gameplayPaused: false }),
     startGame: () =>
       set({
         status: 'playing',
@@ -189,9 +194,11 @@ export const useGameStore = create<GameState>((set, get) => {
         runOranges: 0,
         runOrangeTotal: 0,
         pinkBubbles: 0,
-        placeholderProgress: 0
+        placeholderProgress: 0,
+        gameplayPaused: false
       }),
     restartCurrentLevel: () => get().startGame(),
+    setGameplayPaused: (paused) => set({ gameplayPaused: paused }),
 
     showAdminLoginModal: (show) => set({ showAdminLogin: show }),
     loginAdmin: (username, password) => {
@@ -318,6 +325,7 @@ export const useGameStore = create<GameState>((set, get) => {
         return {
           saveData: nextData,
           status: 'gameover',
+          gameplayPaused: false,
           stars,
           runOranges: orangesCollected,
           runOrangeTotal: orangeTotal
@@ -326,9 +334,9 @@ export const useGameStore = create<GameState>((set, get) => {
     goNextLevel: () =>
       set((state) => {
         if (state.currentLevelId >= 24) {
-          return { status: 'level_select' };
+          return { status: 'level_select', gameplayPaused: false };
         }
-        return { currentLevelId: state.currentLevelId + 1, status: 'start' };
+        return { currentLevelId: state.currentLevelId + 1, status: 'level_intro', gameplayPaused: false };
       }),
     hydrateCloudSave: async () => {
       const state = get();
