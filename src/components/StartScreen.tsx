@@ -58,6 +58,13 @@ export const StartScreen: React.FC = () => {
               <li className="flex items-start gap-2"><span>🍊</span><span>首次通过3座学步桥各奖励1个橙子。</span></li>
               <li className="flex items-start gap-2"><span>⬆️</span><span>抵达出口后上滑完成站立，进入结算。</span></li>
             </>
+          ) : level.levelId === 4 ? (
+            <>
+              <li className="flex items-start gap-2"><span>🧱</span><span>按住顶部积木，水平拖动后松手放置，积木会受重力影响。</span></li>
+              <li className="flex items-start gap-2"><span>🎯</span><span>把塔顶堆到金色目标线，并保持整体稳定2秒即可通关。</span></li>
+              <li className="flex items-start gap-2"><span>🍊</span><span>每成功放稳3块会出现橙子气泡，点击收集，本关最多6个。</span></li>
+              <li className="flex items-start gap-2"><span>↺</span><span>倒塌会自动重置，左下角也可手动重置，不限次数。</span></li>
+            </>
           ) : (
             <>
               <li className="flex items-start gap-2"><span>🧩</span><span>当前为框架占位玩法，点击推进进度。</span></li>

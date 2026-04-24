@@ -17,7 +17,7 @@ const defaultCover =
 export const LEVELS: LevelConfig[] = [
   { levelId: 1, age: 1, title: '听，奶瓶里的摇篮曲', theme: '喝奶', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 10 } },
   { levelId: 2, age: 2, title: '摇摇晃晃向前冲', theme: '爬行学步', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
-  { levelId: 3, age: 3, title: '咿呀星语练习生', theme: '咿呀学语', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
+  { levelId: 3, age: 3, title: '积木世界快乐跳跃', theme: '竖屏平台跳跃', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
   { levelId: 4, age: 4, title: '积木云端城', theme: '搭积木', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
   { levelId: 5, age: 5, title: '故事夜的萤光页', theme: '睡前故事', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
   { levelId: 6, age: 6, title: '第一天上学啦', theme: '第一天上学', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },

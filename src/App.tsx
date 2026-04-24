@@ -11,6 +11,8 @@ import { LevelSelectScreen } from './components/LevelSelectScreen';
 import { PlaceholderLevelGame } from './components/PlaceholderLevelGame';
 import { OrangeShopScreen } from './components/OrangeShopScreen';
 import { Level2CrawlGame } from './components/Level2CrawlGame';
+import { Level3JumpGame } from './components/Level3JumpGame';
+import { Level4StackGame } from './components/Level4StackGame';
 import { LevelIntroScreen } from './components/LevelIntroScreen';
 import { useGameStore } from './store/gameStore';
 
@@ -85,6 +87,8 @@ export default function App() {
         <StartScreen />
         <HUD />
         <Level2CrawlGame />
+        <Level3JumpGame />
+        <Level4StackGame />
         <PlaceholderLevelGame />
         <GameOverUI />
       </div>

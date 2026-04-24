@@ -82,6 +82,9 @@ export class Game extends Scene {
     // Subscribe to state changes from React
     this.storeUnsubscribe = useGameStore.subscribe(
       (state) => {
+        const shouldShowLevel1 = state.status === 'playing' && state.currentLevelId === 1;
+        this.cameras.main.setVisible(shouldShowLevel1);
+
         if (state.status === 'playing' && state.currentLevelId === 1 && !this.isPlaying) {
           this.startGame();
         } else if ((state.status === 'gameover' || state.status === 'start' || state.currentLevelId !== 1) && this.isPlaying) {
@@ -98,6 +101,9 @@ export class Game extends Scene {
         this.updateBottleLiquid(state.fullness);
       }
     );
+
+    const initial = useGameStore.getState();
+    this.cameras.main.setVisible(initial.status === 'playing' && initial.currentLevelId === 1);
   }
 
   private getCurrentGameTime(time: number): number {
