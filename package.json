@@ -4,7 +4,7 @@
   "type": "module",
   "templateType": "freestyle",
   "scripts": {
-    "dev": "vite",
+    "dev": "node ./node_modules/vite/bin/vite.js",
     "build": "vite build",
     "lint": ".rules/lint.sh"
   },

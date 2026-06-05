@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Matter from 'matter-js';
-import { PauseMenu } from './PauseMenu';
+import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
+import { playWrong } from '../utils/levelAudio';
 
 type BlockType = 'rect' | 'square' | 'triangle' | 'cylinder' | 'arch' | 'cloud' | 'star';
 type Palette = 'rose' | 'sage' | 'mist' | 'sand' | 'sky';
@@ -12,13 +13,6 @@ interface BlockSpec {
   w: number;
   h: number;
   palette: Palette;
-}
-
-interface BubbleOrange {
-  id: number;
-  x: number;
-  y: number;
-  collected: boolean;
 }
 
 interface PlacedMeta {
@@ -37,25 +31,29 @@ type MatterBody = Matter.Body & {
 
 const VIEW_W = 750;
 const VIEW_H = 1330;
+const STAGE_TOP = 112;
 const TABLE_TOP = 1060;
+const TABLE_BODY_H = 22;
+const BASE_VISUAL_H = 66;
+/** 底座顶面（视觉与物理碰撞面共用） */
+const BASE_SURFACE_Y = TABLE_TOP - 30;
 const GOAL_LINE_Y = 300;
-const SPAWN_Y = 170;
+const SPAWN_Y = 200;
 const STABLE_SPEED = 0.18;
-const ORANGE_LIMIT = 6;
 const TOTAL_BLOCKS = 20;
 const BASE_WIDTH = 390;
 const BASE_MOVE_AMPLITUDE = 128;
 const BASE_MOVE_SPEED = 0.0012;
 
 const BASE_COLORS: Record<Palette, { base: string; grain: string }> = {
-  rose: { base: '#cda7a7', grain: '#e9d7d7' },
-  sage: { base: '#9eb39f', grain: '#d9e5da' },
-  mist: { base: '#9caec3', grain: '#d8e1ea' },
-  sand: { base: '#ccb494', grain: '#eee3d4' },
-  sky: { base: '#aac2d8', grain: '#e0ebf4' }
+  rose: { base: '#6bb5ff', grain: '#b8d9ef' },
+  sage: { base: '#3aab8e', grain: '#b8e8dc' },
+  mist: { base: '#7eb8da', grain: '#d6ecf8' },
+  sand: { base: '#7cb8a8', grain: '#cce8df' },
+  sky: { base: '#4a9fd8', grain: '#c5e2f2' }
 };
 
-const cloudGradients = ['linear-gradient(160deg, #ffdbe7, #ffeef5)', 'linear-gradient(160deg, #d8ebff, #edf5ff)'];
+const cloudGradients = ['linear-gradient(160deg, #c5e2f2, #eaf4fc)', 'linear-gradient(160deg, #b8e8dc, #e8f8f4)'];
 
 const createLevel4Pool = (): BlockSpec[] => [
   { id: 'b1', type: 'rect', w: 140, h: 44, palette: 'sand' },
@@ -84,10 +82,11 @@ const clamp = (v: number, min: number, max: number): number => Math.min(Math.max
 const toLocalPoint = (event: React.PointerEvent<HTMLDivElement>): { x: number; y: number } => {
   const rect = event.currentTarget.getBoundingClientRect();
   const sx = VIEW_W / rect.width;
-  const sy = VIEW_H / rect.height;
+  const stageHeight = VIEW_H - STAGE_TOP;
+  const sy = stageHeight / rect.height;
   return {
     x: (event.clientX - rect.left) * sx,
-    y: (event.clientY - rect.top) * sy
+    y: STAGE_TOP + (event.clientY - rect.top) * sy
   };
 };
 
@@ -133,9 +132,7 @@ export const Level4StackGame: React.FC = () => {
     restartCurrentLevel,
     goLevelSelect,
     completeLevel,
-    runOranges,
-    addRunOrange,
-    setRunOrangeTotal,
+    runId,
     adminMode,
     testCompleteLevel
   } = useGameStore();
@@ -149,22 +146,21 @@ export const Level4StackGame: React.FC = () => {
   const usedCountRef = useRef(0);
   const hasCollapsedRef = useRef(false);
   const finishedRef = useRef(false);
+  const failedRef = useRef(false);
   const collapseCountRef = useRef(0);
   const stableStartRef = useRef<number | null>(null);
   const holdPointerRef = useRef(false);
   const shapeTickRef = useRef(0);
-  const orangeAwardCheckpointRef = useRef(0);
   const settleCountRef = useRef(0);
   const movingBaseRef = useRef<MatterBody | null>(null);
-  const orangeBubbleIdRef = useRef(1);
   const lastBaseXRef = useRef(VIEW_W / 2);
 
   const [renderBodies, setRenderBodies] = useState<MatterBody[]>([]);
   const [currentBlockId, setCurrentBlockId] = useState<string | null>(null);
   const [usedCount, setUsedCount] = useState(0);
   const [heightPercent, setHeightPercent] = useState(0);
-  const [bubbleOranges, setBubbleOranges] = useState<BubbleOrange[]>([]);
   const [fallingReset, setFallingReset] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [sparklePhase, setSparklePhase] = useState(0);
   const [baseX, setBaseX] = useState(VIEW_W / 2);
 
@@ -175,7 +171,7 @@ export const Level4StackGame: React.FC = () => {
 
   const createStaticWorld = () => {
     if (!engineRef.current) return;
-    const table = Matter.Bodies.rectangle(VIEW_W / 2, TABLE_TOP + 8, BASE_WIDTH, 22, {
+    const table = Matter.Bodies.rectangle(VIEW_W / 2, BASE_SURFACE_Y + TABLE_BODY_H / 2, BASE_WIDTH, TABLE_BODY_H, {
       isStatic: true,
       friction: 1,
       restitution: 0.02
@@ -192,7 +188,7 @@ export const Level4StackGame: React.FC = () => {
   };
 
   const spawnNextBlock = () => {
-    if (!engineRef.current || finishedRef.current || hasCollapsedRef.current) return;
+    if (!engineRef.current || finishedRef.current || hasCollapsedRef.current || failedRef.current) return;
     const next = poolRef.current[usedCountRef.current];
     if (!next) {
       setCurrentBlockId(null);
@@ -215,20 +211,19 @@ export const Level4StackGame: React.FC = () => {
     activeBodyIdRef.current = null;
     usedCountRef.current = 0;
     settleCountRef.current = 0;
-    orangeAwardCheckpointRef.current = 0;
-    orangeBubbleIdRef.current = 1;
     stableStartRef.current = null;
     hasCollapsedRef.current = false;
     finishedRef.current = false;
+    failedRef.current = false;
     holdPointerRef.current = false;
     movingBaseRef.current = null;
     lastBaseXRef.current = VIEW_W / 2;
     setRenderBodies([]);
-    setBubbleOranges([]);
     setHeightPercent(0);
     setUsedCount(0);
     setCurrentBlockId(null);
     setFallingReset(false);
+    setFailed(false);
     setBaseX(VIEW_W / 2);
     poolRef.current = createLevel4Pool();
     createStaticWorld();
@@ -236,7 +231,7 @@ export const Level4StackGame: React.FC = () => {
   };
 
   const triggerCollapseReset = () => {
-    if (hasCollapsedRef.current || finishedRef.current) return;
+    if (hasCollapsedRef.current || finishedRef.current || failedRef.current) return;
     hasCollapsedRef.current = true;
     stableStartRef.current = null;
     collapseCountRef.current += 1;
@@ -244,20 +239,16 @@ export const Level4StackGame: React.FC = () => {
     window.setTimeout(() => fullyResetLevel(), 900);
   };
 
-  const trySpawnOrangeBubble = () => {
-    const id = orangeBubbleIdRef.current++;
-    const x = 120 + ((id * 113) % 510);
-    const y = 160 + ((id * 61) % 260);
-    setBubbleOranges((cur) => (cur.length >= ORANGE_LIMIT ? cur : [...cur, { id, x, y, collected: false }]));
+  const triggerHeightFail = () => {
+    if (failedRef.current || finishedRef.current || hasCollapsedRef.current) return;
+    failedRef.current = true;
+    holdPointerRef.current = false;
+    setFailed(true);
+    playWrong();
   };
 
   const onBlockSettled = () => {
     settleCountRef.current += 1;
-    const awardCount = Math.min(ORANGE_LIMIT, Math.floor(settleCountRef.current / 3));
-    if (awardCount > orangeAwardCheckpointRef.current) {
-      orangeAwardCheckpointRef.current = awardCount;
-      trySpawnOrangeBubble();
-    }
   };
 
   const releaseCurrentBlock = () => {
@@ -284,14 +275,13 @@ export const Level4StackGame: React.FC = () => {
   const tryReleasePointerBlock = () => {
     if (!holdPointerRef.current) return;
     holdPointerRef.current = false;
-    if (!gameplayPaused && !hasCollapsedRef.current && !finishedRef.current) {
+    if (!gameplayPaused && !hasCollapsedRef.current && !finishedRef.current && !failedRef.current) {
       releaseCurrentBlock();
     }
   };
 
   useEffect(() => {
     if (!isActive) return;
-    setRunOrangeTotal(ORANGE_LIMIT);
     const engine = Matter.Engine.create({
       gravity: { x: 0, y: 1.08 }
     });
@@ -308,7 +298,13 @@ export const Level4StackGame: React.FC = () => {
       Matter.Engine.clear(currentEngine);
       engineRef.current = null;
     };
-  }, [isActive, setRunOrangeTotal]);
+  }, [isActive]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    // 通过全局 runId，确保“重新开始”一定会重置本关物理世界与本地状态
+    if (runId > 0) fullyResetLevel();
+  }, [isActive, runId]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -316,151 +312,165 @@ export const Level4StackGame: React.FC = () => {
     const tick = () => {
       shapeTickRef.current += 0.02;
       setSparklePhase((v) => (v + 1) % 360);
-      if (engineRef.current && !gameplayPaused) {
-        Matter.Engine.update(engineRef.current, 1000 / 60);
-        const now = Date.now();
-        const nextBaseX = VIEW_W / 2 + Math.sin(now * BASE_MOVE_SPEED) * BASE_MOVE_AMPLITUDE;
-        const baseDeltaX = nextBaseX - lastBaseXRef.current;
-        lastBaseXRef.current = nextBaseX;
-        if (movingBaseRef.current) {
-          Matter.Body.setPosition(movingBaseRef.current, { x: nextBaseX, y: TABLE_TOP + 8 });
-        }
-        setBaseX(nextBaseX);
-        const allBodies = Object.values(worldBodiesRef.current);
-        const releasedBodies = allBodies.filter((body) => {
-          const id = body.plugin.blockId;
-          return Boolean(id && placedMetaRef.current[id]);
-        });
-        const releasedBodySet = new Set<MatterBody>(releasedBodies);
-        const settledBodySet = new Set<MatterBody>(
-          releasedBodies.filter((body) => {
+      if (engineRef.current) {
+        if (!gameplayPaused && !failedRef.current) {
+          Matter.Engine.update(engineRef.current, 1000 / 60);
+          const now = Date.now();
+          const nextBaseX = VIEW_W / 2 + Math.sin(now * BASE_MOVE_SPEED) * BASE_MOVE_AMPLITUDE;
+          const baseDeltaX = nextBaseX - lastBaseXRef.current;
+          lastBaseXRef.current = nextBaseX;
+          if (movingBaseRef.current) {
+            Matter.Body.setPosition(movingBaseRef.current, { x: nextBaseX, y: BASE_SURFACE_Y + TABLE_BODY_H / 2 });
+          }
+          setBaseX(nextBaseX);
+          const allBodies = Object.values(worldBodiesRef.current);
+          const releasedBodies = allBodies.filter((body) => {
             const id = body.plugin.blockId;
-            return Boolean(id && placedMetaRef.current[id]?.settled);
-          })
-        );
-        const carriedBodies = new Set<MatterBody>();
+            return Boolean(id && placedMetaRef.current[id]);
+          });
+          const releasedBodySet = new Set<MatterBody>(releasedBodies);
+          const settledBodySet = new Set<MatterBody>(
+            releasedBodies.filter((body) => {
+              const id = body.plugin.blockId;
+              return Boolean(id && placedMetaRef.current[id]?.settled);
+            })
+          );
+          const carriedBodies = new Set<MatterBody>();
 
-        let minTop = TABLE_TOP;
-        let stableBodies = 0;
-        let dynamicBodies = 0;
-        let settledReleasedBodies = 0;
+          let minTop = BASE_SURFACE_Y;
+          let stableBodies = 0;
+          let dynamicBodies = 0;
+          let settledReleasedBodies = 0;
 
-        for (const body of allBodies) {
-          if (!body.isStatic) {
-            dynamicBodies += 1;
-            Matter.Body.setAngle(body, 0);
-            Matter.Body.setAngularVelocity(body, 0);
-            // 始终保持垂直下落轨迹（不允许横向漂移）
-            if (Math.abs(body.velocity.x) > 0.0001) {
-              Matter.Body.setVelocity(body, { x: 0, y: body.velocity.y });
-            }
-          }
-
-          if (body.position.y > VIEW_H + 250 || body.position.x < -180 || body.position.x > VIEW_W + 180) {
-            triggerCollapseReset();
-          }
-
-          const meta = body.plugin.blockId ? placedMetaRef.current[body.plugin.blockId] : undefined;
-          if (meta && !meta.settled) {
-            minTop = Math.min(minTop, body.bounds.min.y);
-            const speed = body.speed;
-            if (!body.isStatic && speed <= STABLE_SPEED) stableBodies += 1;
-            if (speed <= 0.14 && Math.abs(body.velocity.y) <= 0.12) {
-              if (!meta.settleAt) meta.settleAt = now;
-              if (now - meta.settleAt > 380) {
-                meta.settled = true;
-                onBlockSettled();
+          for (const body of allBodies) {
+            if (!body.isStatic) {
+              dynamicBodies += 1;
+              Matter.Body.setAngle(body, 0);
+              Matter.Body.setAngularVelocity(body, 0);
+              // 始终保持垂直下落轨迹（不允许横向漂移）
+              if (Math.abs(body.velocity.x) > 0.0001) {
+                Matter.Body.setVelocity(body, { x: 0, y: body.velocity.y });
               }
-            } else {
-              meta.settleAt = 0;
             }
-          } else if (meta?.settled) {
-            minTop = Math.min(minTop, body.bounds.min.y);
-            settledReleasedBodies += 1;
-            if (!body.isStatic && body.speed <= STABLE_SPEED) stableBodies += 1;
+
+            if (body.position.y > VIEW_H + 250 || body.position.x < -180 || body.position.x > VIEW_W + 180) {
+              triggerCollapseReset();
+            }
+
+            const meta = body.plugin.blockId ? placedMetaRef.current[body.plugin.blockId] : undefined;
+            if (meta && !meta.settled) {
+              minTop = Math.min(minTop, body.bounds.min.y);
+              const speed = body.speed;
+              if (!body.isStatic && speed <= STABLE_SPEED) stableBodies += 1;
+              if (speed <= 0.14 && Math.abs(body.velocity.y) <= 0.12) {
+                if (!meta.settleAt) meta.settleAt = now;
+                if (now - meta.settleAt > 380) {
+                  meta.settled = true;
+                  onBlockSettled();
+                }
+              } else {
+                meta.settleAt = 0;
+              }
+            } else if (meta?.settled) {
+              minTop = Math.min(minTop, body.bounds.min.y);
+              settledReleasedBodies += 1;
+              if (!body.isStatic && body.speed <= STABLE_SPEED) stableBodies += 1;
+            }
+          }
+
+          // 底座水平移动时：把“与底座接触并连通”的整叠积木一起平移，保持整体造型与高度关系。
+          if (Math.abs(baseDeltaX) > 0.001 && movingBaseRef.current && releasedBodySet.size > 0) {
+            const collisionPairs = engineRef.current.pairs.list;
+            const adjacency = new Map<MatterBody, Set<MatterBody>>();
+            const queue: MatterBody[] = [];
+            const baseBody = movingBaseRef.current;
+
+            const addEdge = (a: MatterBody, b: MatterBody) => {
+              if (!adjacency.has(a)) adjacency.set(a, new Set<MatterBody>());
+              adjacency.get(a)?.add(b);
+            };
+
+            for (const pair of collisionPairs) {
+              if (!pair.isActive) continue;
+              const a = pair.bodyA as MatterBody;
+              const b = pair.bodyB as MatterBody;
+              const aIsBase = a === baseBody;
+              const bIsBase = b === baseBody;
+              const aReleased = releasedBodySet.has(a);
+              const bReleased = releasedBodySet.has(b);
+
+              if (aIsBase && bReleased) {
+                carriedBodies.add(b);
+                queue.push(b);
+                continue;
+              }
+              if (bIsBase && aReleased) {
+                carriedBodies.add(a);
+                queue.push(a);
+                continue;
+              }
+              if (aReleased && bReleased) {
+                addEdge(a, b);
+                addEdge(b, a);
+              }
+            }
+
+            while (queue.length > 0) {
+              const current = queue.shift() as MatterBody;
+              const neighbors = adjacency.get(current);
+              if (!neighbors) continue;
+              for (const next of neighbors) {
+                if (carriedBodies.has(next)) continue;
+                carriedBodies.add(next);
+                queue.push(next);
+              }
+            }
+
+            for (const body of carriedBodies) {
+              Matter.Body.setPosition(body, { x: body.position.x + baseDeltaX, y: body.position.y });
+            }
+          }
+
+          const safeTop = Number.isFinite(minTop) ? minTop : BASE_SURFACE_Y;
+          const progress = releasedBodies.length > 0 ? clamp(((BASE_SURFACE_Y - safeTop) / (BASE_SURFACE_Y - GOAL_LINE_Y)) * 100, 0, 100) : 0;
+          setHeightPercent(progress);
+
+          const passedLine = releasedBodies.length >= 4 && safeTop <= GOAL_LINE_Y;
+          const allSettled = releasedBodies.length > 0 && settledReleasedBodies === releasedBodies.length;
+          const allStable = dynamicBodies > 0 && stableBodies >= Math.max(1, dynamicBodies - 1);
+          const noBlocksLeft = usedCountRef.current >= TOTAL_BLOCKS && !activeBodyIdRef.current;
+
+          if (
+            !finishedRef.current &&
+            !failedRef.current &&
+            !hasCollapsedRef.current &&
+            noBlocksLeft &&
+            allSettled &&
+            (dynamicBodies === 0 || allStable) &&
+            !passedLine
+          ) {
+            triggerHeightFail();
+          }
+
+          if (!finishedRef.current && passedLine && allSettled && allStable && !hasCollapsedRef.current) {
+            if (stableStartRef.current === null) stableStartRef.current = now;
+            if (now - stableStartRef.current >= 2000) {
+              finishedRef.current = true;
+              const stars = collapseCountRef.current === 0 && usedCountRef.current <= 12 ? 3 : usedCountRef.current <= 16 ? 2 : 1;
+              completeLevel({ stars, orangesCollected: stars, orangeTotal: 3 });
+            }
+          } else if (!passedLine || !allSettled || !allStable) {
+            stableStartRef.current = null;
           }
         }
 
-        // 底座水平移动时：把“与底座接触并连通”的整叠积木一起平移，保持整体造型与高度关系。
-        if (Math.abs(baseDeltaX) > 0.001 && movingBaseRef.current && releasedBodySet.size > 0) {
-          const collisionPairs = engineRef.current.pairs.list;
-          const adjacency = new Map<MatterBody, Set<MatterBody>>();
-          const queue: MatterBody[] = [];
-          const baseBody = movingBaseRef.current;
-
-          const addEdge = (a: MatterBody, b: MatterBody) => {
-            if (!adjacency.has(a)) adjacency.set(a, new Set<MatterBody>());
-            adjacency.get(a)?.add(b);
-          };
-
-          for (const pair of collisionPairs) {
-            if (!pair.isActive) continue;
-            const a = pair.bodyA as MatterBody;
-            const b = pair.bodyB as MatterBody;
-            const aIsBase = a === baseBody;
-            const bIsBase = b === baseBody;
-            const aReleased = releasedBodySet.has(a);
-            const bReleased = releasedBodySet.has(b);
-
-            if (aIsBase && bReleased) {
-              carriedBodies.add(b);
-              queue.push(b);
-              continue;
-            }
-            if (bIsBase && aReleased) {
-              carriedBodies.add(a);
-              queue.push(a);
-              continue;
-            }
-            if (aReleased && bReleased) {
-              addEdge(a, b);
-              addEdge(b, a);
-            }
-          }
-
-          while (queue.length > 0) {
-            const current = queue.shift() as MatterBody;
-            const neighbors = adjacency.get(current);
-            if (!neighbors) continue;
-            for (const next of neighbors) {
-              if (carriedBodies.has(next)) continue;
-              carriedBodies.add(next);
-              queue.push(next);
-            }
-          }
-
-          for (const body of carriedBodies) {
-            Matter.Body.setPosition(body, { x: body.position.x + baseDeltaX, y: body.position.y });
-          }
-        }
-
-        const safeTop = Number.isFinite(minTop) ? minTop : TABLE_TOP;
-        const progress = releasedBodies.length > 0 ? clamp(((TABLE_TOP - safeTop) / (TABLE_TOP - GOAL_LINE_Y)) * 100, 0, 100) : 0;
-        setHeightPercent(progress);
-
-        const passedLine = releasedBodies.length >= 4 && safeTop <= GOAL_LINE_Y;
-        const allSettled = releasedBodies.length > 0 && settledReleasedBodies === releasedBodies.length;
-        const allStable = dynamicBodies > 0 && stableBodies >= Math.max(1, dynamicBodies - 1);
-        if (!finishedRef.current && passedLine && allSettled && allStable && !hasCollapsedRef.current) {
-          if (stableStartRef.current === null) stableStartRef.current = now;
-          if (now - stableStartRef.current >= 2000) {
-            finishedRef.current = true;
-            const allOrange = runOranges;
-            const threeStar = collapseCountRef.current === 0 && allOrange >= ORANGE_LIMIT && usedCountRef.current <= 12;
-            const stars = threeStar ? 3 : allOrange >= 3 || usedCountRef.current <= 16 ? 2 : 1;
-            completeLevel({ stars, orangesCollected: allOrange, orangeTotal: ORANGE_LIMIT });
-          }
-        } else if (!passedLine || !allSettled || !allStable) {
-          stableStartRef.current = null;
-        }
-
-        setRenderBodies([...allBodies]);
+        setRenderBodies([...Object.values(worldBodiesRef.current)]);
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [isActive, gameplayPaused, completeLevel, runOranges]);
+  }, [isActive, gameplayPaused, completeLevel]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -476,63 +486,54 @@ export const Level4StackGame: React.FC = () => {
 
   if (!isActive) return null;
 
-  const orangeCollected = runOranges;
   const remainBlocks = TOTAL_BLOCKS - usedCount;
   const activeBody = currentBlockId ? worldBodiesRef.current[currentBlockId] : null;
 
   return (
-    <div className="absolute inset-0 z-30 pointer-events-auto overflow-hidden bg-[#efe7dc]">
+    <div className="absolute inset-0 z-30 pointer-events-auto overflow-hidden bg-[#dcecf5] flex flex-col">
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'linear-gradient(180deg, #f3ece4 0%, #efe6db 34%, #e8ddcf 34.4%, #e5d8c8 100%), repeating-linear-gradient(90deg, #ffffff0f 0 8px, #0000000b 8px 10px)'
+            'linear-gradient(180deg, #eaf4fc 0%, #d6ecf8 34%, #c5e2f2 34.4%, #b5d8eb 100%), repeating-linear-gradient(90deg, #ffffff0f 0 8px, #0000000b 8px 10px)'
         }}
       />
 
-      <div className="absolute left-0 right-0 top-0 h-20 bg-white/35 backdrop-blur-md border-b border-white/40 z-40 flex items-center gap-2 px-4 text-xs text-[#4a4443]">
-        <div className="rounded-full bg-white/60 px-3 py-1">高度 {Math.floor(heightPercent)}%</div>
-        <div className="rounded-full bg-white/60 px-3 py-1">🍊 {orangeCollected}/{ORANGE_LIMIT}</div>
-        <div className="rounded-full bg-white/60 px-3 py-1">剩余积木 {remainBlocks}</div>
-      </div>
-
-      <button
-        onClick={() => setGameplayPaused(true)}
-        className="absolute right-4 top-[92px] z-40 px-4 py-2 rounded-full bg-white/45 backdrop-blur-md border border-white/70 text-sm text-[#4a4443]"
-      >
-        暂停
-      </button>
-
-      <button
-        onClick={fullyResetLevel}
-        className="absolute left-4 bottom-[150px] z-40 w-14 h-14 rounded-2xl bg-white/45 backdrop-blur-md border border-white/70 text-3xl text-[#4a4443]"
-      >
-        ↺
-      </button>
-
-      <div
-        className="absolute left-0 right-0 border-t-2 border-dashed border-[#e3c67eaa] z-20"
-        style={{ top: GOAL_LINE_Y }}
+      <LevelTopBar
+        title="☁️ 积木云端城"
+        onPause={() => setGameplayPaused(true)}
+        stats={[
+          { label: '高度', value: `${Math.floor(heightPercent)}%` },
+          { label: '剩余积木', value: String(remainBlocks) }
+        ]}
       />
 
-      <div className="absolute left-5 top-[104px] z-20 text-xs text-[#9c8144] bg-[#fff6d8aa] px-3 py-1 rounded-full">
+      <div className="relative flex-1 min-h-0">
+      <div
+        className="absolute left-0 right-0 border-t-2 border-dashed border-[#e3c67eaa] z-20 pointer-events-none"
+        style={{ top: GOAL_LINE_Y - STAGE_TOP }}
+      />
+
+      <div className="absolute left-5 top-2 z-20 text-xs text-[#9c8144] bg-[#fff6d8aa] px-3 py-1 rounded-full pointer-events-none">
         目标高度线
       </div>
 
       <div
-        className="absolute z-10 pointer-events-none"
+        className="absolute z-[20] pointer-events-none"
         style={{
           left: baseX - (BASE_WIDTH + 56) / 2,
-          top: TABLE_TOP - 30,
+          top: BASE_SURFACE_Y - STAGE_TOP,
           width: BASE_WIDTH + 56,
-          height: 66,
+          height: BASE_VISUAL_H,
           borderRadius: 20,
-          background: 'linear-gradient(180deg, #f4efe6, #eee6da)',
-          boxShadow: '0 -8px 18px #0000000d inset'
+          background: 'linear-gradient(180deg, #e5d5c0 0%, #d4c0a8 100%)',
+          border: '2px solid #c9a86c',
+          boxShadow: '0 10px 28px rgba(74,68,67,0.18), 0 2px 0 #fff8ef inset'
         }}
       />
 
-      <div className="absolute left-0 right-0 bottom-[96px] h-[170px] z-10 pointer-events-none bg-[linear-gradient(180deg,#f0ece6_0%,#efe8de_55%,#ebe2d8_100%)] opacity-95" />
+      {/* 仅装饰最底边，不遮挡移动底座 */}
+      <div className="absolute left-0 right-0 bottom-0 h-[72px] z-[5] pointer-events-none bg-[linear-gradient(180deg,transparent_0%,#efe8de_70%)] opacity-80" />
 
       {renderBodies.map((body) => {
         const type = body.plugin.blockType ?? 'rect';
@@ -540,7 +541,7 @@ export const Level4StackGame: React.FC = () => {
         const bodyW = body.bounds.max.x - body.bounds.min.x;
         const bodyH = body.bounds.max.y - body.bounds.min.y;
         const left = body.position.x - bodyW / 2;
-        const top = body.position.y - bodyH / 2;
+        const top = body.position.y - bodyH / 2 - STAGE_TOP;
         const cloudSquash = type === 'cloud' ? clamp(1 - Math.abs(body.velocity.y) * 0.08, 0.82, 1) : 1;
 
         let shapeStyle: React.CSSProperties = {
@@ -580,7 +581,7 @@ export const Level4StackGame: React.FC = () => {
         return (
           <div
             key={body.plugin.blockId ?? `${body.id}`}
-            className="absolute pointer-events-none"
+            className="absolute pointer-events-none z-[25]"
             style={{
               left,
               top,
@@ -598,27 +599,8 @@ export const Level4StackGame: React.FC = () => {
         );
       })}
 
-      {bubbleOranges.map((bubble) => (
-        <button
-          key={bubble.id}
-          onClick={() => {
-            if (bubble.collected) return;
-            if (runOranges >= ORANGE_LIMIT) return;
-            addRunOrange(1);
-            setBubbleOranges((cur) => cur.map((b) => (b.id === bubble.id ? { ...b, collected: true } : b)));
-          }}
-          className={`absolute z-50 text-lg w-12 h-12 rounded-full border border-amber-200/80 bg-[#ffcc6fcc] shadow-[0_0_12px_rgba(255,184,66,0.75)] transition ${bubble.collected ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100'}`}
-          style={{
-            left: bubble.x,
-            top: bubble.y + Math.sin((shapeTickRef.current + bubble.id) * 1.3) * 8
-          }}
-        >
-          🍊
-        </button>
-      ))}
-
       {activeBody && currentSpec && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-[112px] z-30 text-xs text-[#4a4443] bg-white/65 rounded-full px-3 py-1">
+        <div className="absolute left-1/2 -translate-x-1/2 top-3 z-30 text-xs text-[#1a3348] bg-white/65 rounded-full px-3 py-1 pointer-events-none">
           当前积木：{currentSpec.type === 'rect'
             ? '长方块'
             : currentSpec.type === 'square'
@@ -635,11 +617,11 @@ export const Level4StackGame: React.FC = () => {
         </div>
       )}
 
-      <div className="absolute inset-0 z-35">
+      <div className="absolute inset-0 z-[40]">
         <div
           className="absolute inset-0"
           onPointerDown={(event) => {
-            if (gameplayPaused || hasCollapsedRef.current || finishedRef.current) return;
+            if (gameplayPaused || hasCollapsedRef.current || finishedRef.current || failed) return;
             const id = activeBodyIdRef.current;
             if (!id) return;
             const body = worldBodiesRef.current[id];
@@ -670,13 +652,31 @@ export const Level4StackGame: React.FC = () => {
         />
       </div>
 
-      <div className="absolute left-0 right-0 bottom-[32px] z-40 text-center text-sm text-[#4a4443]">
-        按住积木拖动并松开；每放稳3块会飘出可点击🍊
+      <div className="absolute left-0 right-0 bottom-[32px] z-40 text-center text-sm text-[#1a3348] pointer-events-none">
+        按住积木拖动并松开；稳定堆高并通过目标线即可结算
       </div>
 
       {fallingReset && (
-        <div className="absolute inset-0 z-60 bg-white/20 backdrop-blur-[1px] flex items-center justify-center">
-          <div className="px-5 py-3 rounded-2xl bg-white/70 text-[#4a4443] text-sm">积木倒塌了，正在温柔重置...</div>
+        <div className="absolute inset-0 z-[60] bg-white/20 backdrop-blur-[1px] flex items-center justify-center">
+          <div className="px-5 py-3 rounded-2xl bg-white/70 text-[#1a3348] text-sm">积木倒塌了，正在温柔重置...</div>
+        </div>
+      )}
+      </div>
+
+      {failed && (
+        <div className="absolute inset-0 z-[90] bg-[#0a1628]/35 flex items-center justify-center px-10">
+          <div className="w-full rounded-3xl bg-white p-6 text-center space-y-3">
+            <h3 className="text-lg font-bold text-[#1a3348]">云端还没搭够高</h3>
+            <p className="text-sm text-[#3d5a72]">
+              积木已用完，高度 {Math.floor(heightPercent)}%，还没碰到目标线。再试一次吧。
+            </p>
+            <button type="button" onClick={restartCurrentLevel} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#4a9fd8] to-[#3aab8e] text-white font-semibold">
+              再来一局
+            </button>
+            <button type="button" onClick={goLevelSelect} className="w-full py-3 rounded-xl bg-[#e3f2fc]">
+              返回关卡
+            </button>
+          </div>
         </div>
       )}
 
@@ -686,16 +686,6 @@ export const Level4StackGame: React.FC = () => {
             测试通关
           </button>
         </div>
-      )}
-
-      {gameplayPaused && (
-        <PauseMenu
-          adminMode={adminMode}
-          onContinue={() => setGameplayPaused(false)}
-          onRestart={restartCurrentLevel}
-          onGoHome={goLevelSelect}
-          onAdminComplete={testCompleteLevel}
-        />
       )}
     </div>
   );

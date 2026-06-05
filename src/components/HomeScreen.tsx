@@ -1,8 +1,18 @@
 import React, { useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 
+const HOME_COVER = '/images/封面.png';
+
+/** 封面图 942×1670，「开始游戏」约在距底 17%～28% 区域 */
+const START_BTN_STYLE: React.CSSProperties = {
+  left: '14%',
+  right: '14%',
+  bottom: '17.3%',
+  height: '11%'
+};
+
 export const HomeScreen: React.FC = () => {
-  const { status, goLevelSelect, showAdminLogin, showAdminLoginModal, loginAdmin } = useGameStore();
+  const { status, goLevelSelect, showAdminLogin, showAdminLoginModal, loginAdmin, saveData } = useGameStore();
   const timerRef = useRef<number | null>(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -34,40 +44,38 @@ export const HomeScreen: React.FC = () => {
     window.alert('管理员模式已开启');
   };
 
+  const enterGame = (e: React.MouseEvent | React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    goLevelSelect();
+  };
+
   return (
-    <div className="absolute inset-0 z-50 bg-[#F9F6F0] flex flex-col items-center justify-center p-8 pointer-events-auto bg-cover bg-center" style={{ backgroundImage: 'url(https://miaoda-site-img.cdn.bcebos.com/images/baidu_image_search_65bcd67e-df05-473b-8f3f-d000739cbea5.jpg)' }}>
-      <div className="absolute inset-0 bg-[#F9F6F0]/80 backdrop-blur-sm"></div>
-      
-      {/* 居中大字标题 */}
-      <h1 className="relative z-10 text-[#4A4443] mb-10 text-center drop-shadow-md tracking-wider flex flex-col gap-3">
-        <span className="text-[1.75rem] font-extrabold whitespace-nowrap leading-none">陈添祥的平行世界：</span>
-        <span className="text-[3.25rem] font-extrabold text-[#B2CEE5] leading-none">24帧人生</span>
-      </h1>
-      
-      <div className="relative z-10 w-full max-w-[14rem] aspect-square rounded-full mb-12 flex flex-col items-center justify-center border-4 border-[#FADCD9] shadow-2xl overflow-hidden shrink-0">
-        <img src="https://miaoda-site-img.cdn.bcebos.com/images/baidu_image_search_71772a2c-a3d1-4dba-a86d-741fd76c6976.jpg" alt="陈添祥 元素" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-[#FADCD9]/20"></div>
+    <div className="absolute inset-0 z-50 pointer-events-auto overflow-hidden bg-[#0a1628]">
+      <img src={HOME_COVER} alt="24帧人生" className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none" draggable={false} />
+
+      {/* 封面「开始游戏」热区（下移对齐 hex 按钮） */}
+      <button
+        type="button"
+        onClick={enterGame}
+        className="absolute z-30 cursor-pointer touch-manipulation border-0 p-0 m-0 bg-transparent"
+        style={START_BTN_STYLE}
+        aria-label="开始游戏"
+      />
+
+      <div className="absolute right-3 top-3 z-20 px-2.5 py-1 rounded-full bg-black/25 text-white text-xs font-medium backdrop-blur-sm pointer-events-none">
+        🍊 {saveData.totalOranges}
       </div>
 
-      <button 
-        onClick={goLevelSelect}
-        className="relative z-10 px-12 py-4 mb-auto bg-gradient-to-r from-[#FADCD9] to-[#B2CEE5] text-white rounded-full text-2xl font-bold shadow-xl transform active:scale-95 transition-all hover:opacity-90 hover:shadow-2xl"
-      >
-        进入游戏
-      </button>
-
-      {/* 底部版权和说明 */}
+      {/* 仅最底边长按进管理员，避免挡住开始游戏 */}
       <div
-        className="relative z-10 w-full text-center pb-6 mt-12 flex flex-col gap-2"
+        className="absolute inset-x-0 bottom-0 h-[5%] z-10"
         onMouseDown={startPress}
         onMouseUp={endPress}
         onMouseLeave={endPress}
         onTouchStart={startPress}
         onTouchEnd={endPress}
-      >
-        <p className="text-[#4A4443]/70 text-sm font-medium">陈添祥24周岁生日应援游戏</p>
-        <p className="text-[#4A4443]/50 text-xs">Copyright ©添_星辉 | 陈添祥</p>
-      </div>
+      />
 
       {showAdminLogin && (
         <div className="absolute inset-0 z-[60] bg-black/40 flex items-center justify-center px-10">

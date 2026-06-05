@@ -1,11 +1,20 @@
 import React from 'react';
 import { useGameStore } from '../store/gameStore';
 import { LEVELS } from '../data/levels';
+import { getLevelStartTheme } from '../data/levelStartThemes';
+import { FRESH, hudGlass, mobileContentInset, mobileTextMin, mobileTextTitle } from '../utils/levelTheme';
 
-// DEV ONLY:
-// 临时开放所有关卡，方便开发测试。
-// 发布前请改回 false，恢复“上一关通关后解锁下一关”的正式规则。
 const DEV_UNLOCK_ALL_LEVELS = true;
+
+const StarMini: React.FC<{ count: number; accent: string }> = ({ count, accent }) => (
+  <span className="text-xs tracking-tight">
+    {[1, 2, 3].map((i) => (
+      <span key={i} style={{ color: i <= count ? accent : `${FRESH.sand}66` }}>
+        ★
+      </span>
+    ))}
+  </span>
+);
 
 export const LevelSelectScreen: React.FC = () => {
   const {
@@ -25,69 +34,164 @@ export const LevelSelectScreen: React.FC = () => {
 
   const completedCount = Object.values(saveData.levels).filter((item) => item.completed).length;
   const continueLevel = LEVELS.find((level) => !saveData.levels[String(level.levelId)]?.completed)?.levelId ?? 24;
+  const progress = Math.round((completedCount / 24) * 100);
+  const continueTheme = getLevelStartTheme(continueLevel);
 
   return (
-    <div className="absolute inset-0 z-50 bg-[#F9F6F0] flex flex-col items-center p-8 pointer-events-auto overflow-y-auto">
-      <div className="w-full flex items-center justify-between mb-4">
-        <button 
-          onClick={goHome}
-          className="p-2 rounded-full bg-white/60 text-[#4A4443] shadow-sm active:scale-95 transition-all"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h2 className="text-xl font-bold text-[#4A4443]">24帧·人生放映厅</h2>
-        <button onClick={goOrangeShop} className="text-[#4A4443] font-bold text-sm bg-white/70 px-2 py-1 rounded-full">
-          🍊 {saveData.totalOranges}
-        </button>
-      </div>
+    <div
+      className="absolute inset-0 z-50 pointer-events-auto flex flex-col overflow-hidden"
+      style={{ background: FRESH.bgGrad }}
+    >
+      <div
+        className="absolute inset-0 opacity-35 pointer-events-none"
+        style={{
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.55) 1px, transparent 1px)',
+          backgroundSize: '22px 22px'
+        }}
+      />
+      <div className="absolute -top-24 -right-12 w-72 h-72 rounded-full blur-3xl opacity-40 pointer-events-none" style={{ background: FRESH.sky }} />
+      <div className="absolute -bottom-28 -left-16 w-80 h-80 rounded-full blur-3xl opacity-35 pointer-events-none" style={{ background: FRESH.sage }} />
 
-      <div className="w-full bg-white/70 rounded-2xl p-3 mb-4 text-center text-sm text-[#4A4443] font-medium">
-        已通关 {completedCount} / 24 关
+      {/* 顶栏 */}
+      <div className={`relative z-10 shrink-0 pt-5 pb-3 ${mobileContentInset}`}>
+        <div className={`${hudGlass} px-4 py-3.5`}>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={goHome}
+              className="flex items-center justify-center w-11 h-11 rounded-xl bg-white/90 border border-white shadow-sm active:scale-95 transition-transform"
+            >
+              <svg className="w-5 h-5" style={{ color: FRESH.text }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="flex-1 min-w-0 text-center">
+              <h2 className={`${mobileTextTitle} font-bold leading-tight`} style={{ color: FRESH.text }}>
+                24帧 · 人生放映厅
+              </h2>
+              <p className={`${mobileTextMin} mt-0.5`} style={{ color: FRESH.textMuted }}>
+                已通关 {completedCount} / 24 · {progress}%
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={goOrangeShop}
+              className={`flex items-center gap-1 px-3 h-11 rounded-xl bg-white/80 border border-white/85 ${mobileTextMin} font-bold shadow-sm active:scale-95`}
+              style={{ color: FRESH.text }}
+            >
+              🍊 {saveData.totalOranges}
+            </button>
+          </div>
+          <div className="mt-3 h-2.5 rounded-full bg-white/45 border border-white/60 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{ width: `${progress}%`, background: `linear-gradient(90deg, ${FRESH.sky}, ${FRESH.sage})` }}
+            />
+          </div>
+        </div>
       </div>
 
       {adminMode && (
-        <div className="w-full bg-red-100 text-red-600 rounded-2xl p-2 mb-4 text-center font-semibold text-sm">
-          🔧 管理员模式
+        <div className={`relative z-10 mb-2 ${mobileContentInset}`}>
+          <div className={`px-4 py-2.5 rounded-xl text-center ${mobileTextMin} font-semibold`} style={{ background: `${FRESH.accentSoft}ee`, border: `1px solid ${FRESH.mist}66`, color: FRESH.text }}>
+            🔧 管理员模式
+          </div>
         </div>
       )}
 
-      <div className="w-full max-w-[22rem] grid grid-cols-2 gap-3 pb-24">
-        {LEVELS.map((level) => {
-          const unlocked = DEV_UNLOCK_ALL_LEVELS || adminMode || saveData.unlockedLevels.includes(level.levelId);
-          const rec = saveData.levels[String(level.levelId)];
-          return (
-            <button
-              key={level.levelId}
-              disabled={!unlocked}
-              onClick={() => enterLevelStart(level.levelId)}
-              className={`text-left p-4 rounded-2xl border ${unlocked ? 'bg-white border-[#FADCD9] shadow' : 'bg-gray-100 border-gray-200 opacity-60'} `}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-[#4A4443]">{level.levelId}岁</span>
-                <span className="text-xs">{unlocked ? '可进入' : '🔒'}</span>
-              </div>
-              <p className="text-xs text-[#4A4443] mb-2">{level.title}</p>
-              <p className="text-xs text-[#4A4443]/60">★ {rec?.stars ?? 0} / 🍊 {rec?.bestOrange ?? 0}</p>
-            </button>
-          );
-        })}
+      {/* 关卡网格：两列 */}
+      <div className={`relative z-10 flex-1 min-h-0 overflow-y-auto pb-32 ${mobileContentInset}`}>
+        <p className={`${mobileTextMin} font-semibold mb-3 px-1`} style={{ color: FRESH.textMuted }}>
+          全部关卡
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          {LEVELS.map((level) => {
+            const theme = getLevelStartTheme(level.levelId);
+            const unlocked = DEV_UNLOCK_ALL_LEVELS || adminMode || saveData.unlockedLevels.includes(level.levelId);
+            const rec = saveData.levels[String(level.levelId)];
+            const done = !!rec?.completed;
+            const isNext = level.levelId === continueLevel && !done;
+
+            return (
+              <button
+                key={level.levelId}
+                type="button"
+                disabled={!unlocked}
+                onClick={() => enterLevelStart(level.levelId)}
+                className={`text-left rounded-[1.15rem] border-2 p-3.5 transition-all active:scale-[0.98] ${
+                  unlocked
+                    ? 'bg-white/80 backdrop-blur-sm shadow-[0_8px_22px_rgba(26,51,72,0.1)]'
+                    : 'bg-white/35 opacity-50'
+                } ${isNext ? 'ring-2 ring-offset-2 ring-offset-transparent' : ''}`}
+                style={{
+                  borderColor: unlocked ? (isNext ? theme.accent : done ? theme.accent : theme.cardBorder) : `${FRESH.mist}55`,
+                  ...(isNext ? { ringColor: theme.accent } : {})
+                }}
+              >
+                {isNext && (
+                  <span
+                    className="inline-block mb-2 text-xs font-bold px-2 py-0.5 rounded-full text-white"
+                    style={{ background: theme.accent }}
+                  >
+                    继续这里
+                  </span>
+                )}
+                <div className="flex items-start gap-2.5 mb-2.5">
+                  <div
+                    className="shrink-0 w-12 h-12 rounded-[0.85rem] flex items-center justify-center text-[1.625rem] border-2 border-white/85 shadow-sm"
+                    style={{ background: theme.orbGradient }}
+                  >
+                    {unlocked ? theme.emoji : '🔒'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`${mobileTextTitle} font-bold`} style={{ color: FRESH.text }}>
+                      第{level.levelId}关
+                    </p>
+                    <p className={`${mobileTextMin} leading-snug line-clamp-2 mt-0.5`} style={{ color: FRESH.textSoft }}>
+                      {level.title}
+                    </p>
+                  </div>
+                </div>
+                <div className={`flex items-center justify-between ${mobileTextMin} pt-2 border-t border-white/60`} style={{ color: FRESH.textSoft }}>
+                  <StarMini count={rec?.stars ?? 0} accent={theme.accent} />
+                  <span>🍊 {rec?.bestOrange ?? 0}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <button
-        onClick={() => enterLevelStart(continueLevel)}
-        className="fixed bottom-5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#FADCD9] to-[#B2CEE5] text-white px-8 py-3 rounded-full font-bold shadow-lg"
+      {/* 继续按钮 */}
+      <div
+        className={`absolute bottom-0 inset-x-0 z-20 pb-6 pt-5 ${mobileContentInset}`}
+        style={{ background: `linear-gradient(to top, ${FRESH.bgMid} 0%, ${FRESH.bgMid}f0 55%, transparent 100%)` }}
       >
-        继续旅程
-      </button>
+        <button
+          type="button"
+          onClick={() => enterLevelStart(continueLevel)}
+          className={`w-full py-3.5 rounded-2xl ${mobileTextTitle} font-bold text-white border-2 border-white/60 shadow-[0_12px_32px_rgba(26,51,72,0.2)] active:scale-[0.98] flex items-center justify-center gap-2`}
+          style={{ background: `linear-gradient(135deg, ${FRESH.sky}, ${FRESH.sage})` }}
+        >
+          <span>{continueTheme.emoji}</span>
+          <span>继续旅程 · 第 {continueLevel} 关</span>
+        </button>
+      </div>
 
       {adminMode && (
-        <div className="fixed right-4 bottom-24 bg-white rounded-2xl shadow-xl border border-red-100 p-3 w-40 space-y-2">
-          <button onClick={unlockAllLevels} className="w-full text-xs bg-red-50 rounded-lg py-2">全部解锁</button>
-          <button onClick={resetCurrentModeData} className="w-full text-xs bg-red-50 rounded-lg py-2">重置所有进度</button>
-          <button onClick={syncAdminToPlayer} className="w-full text-xs bg-red-50 rounded-lg py-2">同步到普通存档</button>
-          <button onClick={logoutAdmin} className="w-full text-xs bg-gray-100 rounded-lg py-2">退出管理员</button>
+        <div className="absolute right-4 bottom-36 z-30 rounded-2xl border bg-white/92 backdrop-blur-md shadow-xl p-3 w-44 space-y-2" style={{ borderColor: `${FRESH.mist}88` }}>
+          <button type="button" onClick={unlockAllLevels} className="w-full text-sm font-semibold rounded-xl py-2" style={{ background: FRESH.accentSoft, color: FRESH.text }}>
+            全部解锁
+          </button>
+          <button type="button" onClick={resetCurrentModeData} className="w-full text-sm font-semibold rounded-xl py-2" style={{ background: FRESH.accentSoft, color: FRESH.text }}>
+            重置进度
+          </button>
+          <button type="button" onClick={syncAdminToPlayer} className="w-full text-sm font-semibold rounded-xl py-2" style={{ background: FRESH.accentSoft, color: FRESH.text }}>
+            同步存档
+          </button>
+          <button type="button" onClick={logoutAdmin} className="w-full text-sm font-semibold rounded-xl py-2 bg-white/80" style={{ color: FRESH.text }}>
+            退出管理员
+          </button>
         </div>
       )}
     </div>

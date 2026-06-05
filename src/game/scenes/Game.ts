@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/gameStore';
 const BPM = 74; // Adjusted to match a slow ballad pace
 const BEAT_INTERVAL = 60000 / BPM; 
 const DROP_TIME = 2000; // 时间从顶部落到判定线
+const START_GRACE_MS = 1800; // 开局喘息时间，避免重开后立即掉落奶滴
 
 interface Note {
   id: number;
@@ -21,6 +22,8 @@ export class Game extends Scene {
   private leftTrackX!: number;
   private rightTrackX!: number;
   private hitY!: number;
+  /**  gameplay 整体下移，为顶部 React HUD 留出空间 */
+  private contentOffsetY = 0;
   
   private notes: Note[] = [];
   private noteIdCounter = 0;
@@ -28,12 +31,15 @@ export class Game extends Scene {
   private startTime = 0;
   private pauseTime = 0;
   private pausedDuration = 0;
+  private runId = -1;
   
   private nextSpawnIndex = 0;
   private scoreTexts: Phaser.GameObjects.Text[] = [];
   
   // Visual elements
   private babyFace!: Phaser.GameObjects.Text;
+  private leftBottle!: Phaser.GameObjects.Image;
+  private rightBottle!: Phaser.GameObjects.Image;
   private babyTween?: Phaser.Tweens.Tween;
   private hitLinePulse!: Phaser.Tweens.Tween;
   
@@ -51,9 +57,10 @@ export class Game extends Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
     
-    this.leftTrackX = width * 0.12;
-    this.rightTrackX = width * 0.88;
-    this.hitY = height * 0.8;
+    this.contentOffsetY = Math.round(height * 0.045);
+    this.leftTrackX = width * 0.22;
+    this.rightTrackX = width * 0.78;
+    this.hitY = height * 0.8 + this.contentOffsetY;
 
     this.createBackground();
     this.createTracks();
@@ -85,8 +92,8 @@ export class Game extends Scene {
         const shouldShowLevel1 = state.status === 'playing' && state.currentLevelId === 1;
         this.cameras.main.setVisible(shouldShowLevel1);
 
-        if (state.status === 'playing' && state.currentLevelId === 1 && !this.isPlaying) {
-          this.startGame();
+        if (state.status === 'playing' && state.currentLevelId === 1 && (!this.isPlaying || state.runId !== this.runId)) {
+          this.startGame(state.runId);
         } else if ((state.status === 'gameover' || state.status === 'start' || state.currentLevelId !== 1) && this.isPlaying) {
           this.stopGame();
         }
@@ -124,7 +131,7 @@ export class Game extends Scene {
     // Spawn notes
     while (this.nextSpawnIndex < this.notes.length) {
       const note = this.notes[this.nextSpawnIndex];
-      const spawnTime = note.time - DROP_TIME;
+      const spawnTime = note.time - DROP_TIME + START_GRACE_MS;
       
       if (currentTime >= spawnTime) {
         this.spawnNoteSprite(note);
@@ -185,6 +192,7 @@ export class Game extends Scene {
     const sprite = this.add.sprite(x, 0, 'note');
     sprite.setOrigin(0.5);
     sprite.setScale(0.8);
+    sprite.setDepth(12);
     note.sprite = sprite;
     note.active = true;
   }
@@ -262,8 +270,8 @@ export class Game extends Scene {
       else if (acc >= 0.7) stars = 2;
       store.completeLevel({
         stars,
-        orangesCollected: fresh.runOranges,
-        orangeTotal: 0
+        orangesCollected: stars,
+        orangeTotal: 3
       });
       return;
     }
@@ -313,16 +321,13 @@ export class Game extends Scene {
 
   private pulseBottle(track: 0 | 1) {
     const x = track === 0 ? this.leftTrackX : this.rightTrackX;
-    
-    // Animate the bottle sprite directly
-    const bottles = this.children.list.filter(c => c.type === 'Image' && (c as Phaser.GameObjects.Image).texture.key === 'bottle');
-    const targetBottle = bottles.find(c => Math.abs((c as Phaser.GameObjects.Image).x - x) < 10);
-    
+    const targetBottle = track === 0 ? this.leftBottle : this.rightBottle;
+
     if (targetBottle) {
       this.tweens.add({
         targets: targetBottle,
-        scaleX: 0.7, // slightly larger than default 0.6
-        scaleY: 0.7,
+        scaleX: 0.78,
+        scaleY: 0.78,
         yoyo: true,
         duration: 100,
         ease: 'Cubic.easeOut'
@@ -343,7 +348,7 @@ export class Game extends Scene {
 
   private showFloatingText(type: 'perfect' | 'good' | 'oops', x: number, y: number) {
     const textConfig = {
-      perfect: { text: 'Perfect', color: '#FADCD9', scale: 1.5 },
+      perfect: { text: 'Perfect', color: '#4a9fd8', scale: 1.5 },
       good: { text: 'Good', color: '#B2CEE5', scale: 1.2 },
       oops: { text: 'Oops...', color: '#4A4443', scale: 1.0 },
     };
@@ -372,7 +377,7 @@ export class Game extends Scene {
     
     if (type === 'perfect' || type === 'good') {
       this.babyFace.setText('^v^');
-      this.babyFace.setColor('#FADCD9');
+      this.babyFace.setColor('#4a9fd8');
     } else {
       this.babyFace.setText('>_<');
       this.babyFace.setColor('#4A4443');
@@ -422,9 +427,7 @@ export class Game extends Scene {
     });
 
     drop.on('pointerdown', () => {
-      const before = useGameStore.getState().runOranges;
       store.collectNoteDrop();
-      const after = useGameStore.getState().runOranges;
       
       // Feedback
       this.tweens.killTweensOf(drop);
@@ -455,38 +458,23 @@ export class Game extends Scene {
         onComplete: () => bubble.destroy()
       });
 
-      if (after > before) {
-        const orangeTip = this.add.text(this.cameras.main.width / 2, this.hitY - 160, '🍊 +1', {
-          fontSize: '36px',
-          color: '#f59e0b',
-          fontStyle: 'bold'
-        }).setOrigin(0.5);
-        this.tweens.add({
-          targets: orangeTip,
-          y: orangeTip.y - 40,
-          alpha: 0,
-          duration: 700,
-          onComplete: () => orangeTip.destroy()
-        });
-      }
     });
   }
 
   private createBottles() {
-    const width = this.cameras.main.width;
     const hitY = this.hitY;
-    
-    // Create bottle images instead of graphics
-    // The bottle image might need scaling depending on its actual size
-    const bottleScale = 0.6; // Adjust this value to fit your screen
-    
-    const leftBottle = this.add.image(this.leftTrackX, hitY, 'bottle');
-    leftBottle.setOrigin(0.5, 0.5);
-    leftBottle.setScale(bottleScale);
-    
-    const rightBottle = this.add.image(this.rightTrackX, hitY, 'bottle');
-    rightBottle.setOrigin(0.5, 0.5);
-    rightBottle.setScale(bottleScale);
+    const bottleScale = 0.68;
+    const bottleKey = this.textures.exists('bottle-hd') ? 'bottle-hd' : 'bottle';
+
+    this.leftBottle = this.add.image(this.leftTrackX, hitY, bottleKey);
+    this.leftBottle.setOrigin(0.5, 0.5);
+    this.leftBottle.setScale(bottleScale);
+    this.leftBottle.setDepth(30);
+
+    this.rightBottle = this.add.image(this.rightTrackX, hitY, bottleKey);
+    this.rightBottle.setOrigin(0.5, 0.5);
+    this.rightBottle.setScale(bottleScale);
+    this.rightBottle.setDepth(30);
   }
 
   private updateBottleLiquid(fullness: number) {
@@ -500,16 +488,17 @@ export class Game extends Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
     
-    this.babyFace = this.add.text(width / 2, height * 0.85, '-_-', {
+    this.babyFace = this.add.text(width / 2, height * 0.85 + this.contentOffsetY, '-_-', {
       fontSize: '48px',
       color: '#4A4443',
       fontStyle: 'bold'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(28);
   }
 
-  private startGame() {
+  private startGame(runId: number) {
     this.isPlaying = true;
     this.isPaused = false;
+    this.runId = runId;
     this.generateLevelData();
     this.startTime = this.time.now;
     this.pauseTime = 0;
@@ -530,7 +519,6 @@ export class Game extends Scene {
     this.notes.forEach(n => { if (n.sprite) n.sprite.destroy(); });
     this.babyFace.setText('-_-');
     this.babyFace.setColor('#4A4443');
-    useGameStore.getState().setRunOrangeTotal(0);
     console.log('Game Started');
   }
 
@@ -567,24 +555,19 @@ export class Game extends Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
     
-    // Add real image background
-    const bgImage = this.add.image(width / 2, height / 2, 'bg-game');
+    // 奶嘴添添：居中略偏上，留出底部奶瓶操作区
+    const bgImage = this.add.image(width / 2, height * 0.46 + this.contentOffsetY, 'bg-game');
     bgImage.setOrigin(0.5);
+    bgImage.setDepth(0);
     
-    // Scale image to cover the screen
     const scaleX = width / bgImage.width;
-    const scaleY = height / bgImage.height;
-    bgImage.setScale(Math.max(scaleX, scaleY));
+    const scaleY = (height * 0.62) / bgImage.height;
+    bgImage.setScale(Math.max(scaleX, scaleY) * 0.92);
     
-    // Add an overlay to make it match the soft watercolor style and ensure UI readability
     const bg = this.add.graphics();
-    bg.fillStyle(0xF9F6F0, 0.6); // Soft warm white overlay
+    bg.setDepth(1);
+    bg.fillStyle(0xF9F6F0, 0.12);
     bg.fillRect(0, 0, width, height);
-
-    bg.fillStyle(0xFADCD9, 0.2);
-    bg.fillCircle(width * 0.2, height * 0.2, 150);
-    bg.fillStyle(0xB2CEE5, 0.2);
-    bg.fillCircle(width * 0.8, height * 0.7, 200);
   }
 
   private createTracks() {
@@ -611,14 +594,13 @@ export class Game extends Scene {
 
   private createHitLine() {
     const width = this.cameras.main.width;
-    const height = this.cameras.main.height;
-    const hitY = height * 0.8;
+    const hitY = this.hitY;
 
     const g = this.add.graphics();
     g.lineStyle(2, 0xFADCD9, 0.8);
     g.beginPath();
-    g.moveTo(width * 0.1, hitY);
-    g.lineTo(width * 0.9, hitY);
+    g.moveTo(width * 0.16, hitY);
+    g.lineTo(width * 0.84, hitY);
     g.strokePath();
   }
 }

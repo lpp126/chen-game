@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { PauseMenu } from './PauseMenu';
+import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 
 type PlatformType = 'basic' | 'cloud' | 'moving-horizontal' | 'moving-vertical' | 'swing';
@@ -96,9 +96,6 @@ export const Level3JumpGame: React.FC = () => {
     restartCurrentLevel,
     goLevelSelect,
     completeLevel,
-    runOranges,
-    addRunOrange,
-    setRunOrangeTotal,
     adminMode,
     testCompleteLevel
   } = useGameStore();
@@ -153,7 +150,6 @@ export const Level3JumpGame: React.FC = () => {
 
   useEffect(() => {
     if (!isActive) return;
-    setRunOrangeTotal(5);
     levelStart.current = Date.now();
     finishedRef.current = false;
     setPlayer({ x: START_POS.x, y: START_POS.y, vx: 0, vy: 0 });
@@ -169,7 +165,7 @@ export const Level3JumpGame: React.FC = () => {
     setSpawnPoint({ x: START_POS.x, y: START_POS.y });
     setEffects([]);
     setToast('');
-  }, [isActive, setRunOrangeTotal]);
+  }, [isActive]);
 
   useEffect(() => {
     if (!isActive || gameplayPaused) return;
@@ -300,7 +296,6 @@ export const Level3JumpGame: React.FC = () => {
           curOranges.map((o) => {
             if (o.collected) return o;
             if (Math.hypot(centerX - o.x, centerY - o.y) < 30) {
-              addRunOrange(1);
               setToast('🍊 +1');
               window.setTimeout(() => setToast(''), 700);
               return { ...o, collected: true };
@@ -314,9 +309,9 @@ export const Level3JumpGame: React.FC = () => {
         if (!finishedRef.current && Math.hypot(centerX - goalX, centerY - goalY) < 55) {
           finishedRef.current = true;
           const elapsed = (Date.now() - levelStart.current) / 1000;
-          const currentStars = stars.filter((s) => s.collected).length;
-          const rank = currentStars >= 10 && elapsed <= 120 ? 3 : currentStars >= 5 ? 2 : 1;
-          completeLevel({ stars: rank, orangesCollected: runOranges + orangeCount, orangeTotal: 5 });
+          const collectedStars = stars.filter((s) => s.collected).length;
+          const rank = collectedStars >= 10 && elapsed <= 120 ? 3 : collectedStars >= 5 ? 2 : 1;
+          completeLevel({ stars: rank, orangesCollected: orangeCount, orangeTotal: 5 });
         }
 
         const targetCam = Math.min(Math.max(next.y - PLAY_VIEW_H * CAMERA_PLAYER_RATIO, 0), WORLD_H - PLAY_VIEW_H);
@@ -334,12 +329,10 @@ export const Level3JumpGame: React.FC = () => {
     dynamicPlatforms,
     leftPressed,
     rightPressed,
-    addRunOrange,
     activeCp,
     spawnPoint.x,
     spawnPoint.y,
     completeLevel,
-    runOranges,
     orangeCount,
     stars
   ]);
@@ -372,17 +365,15 @@ export const Level3JumpGame: React.FC = () => {
             'conic-gradient(from 210deg at 50% 100%, transparent 0deg, #ffd1d180 40deg, #ffe9b280 62deg, #d6f3ff90 84deg, #e7d8ff80 102deg, transparent 118deg)'
         }}
       />
-      <div className="absolute left-6 top-3 z-40 text-xs bg-white/75 rounded-full px-3 py-1 text-[#4a4443]">第3关 积木世界快乐跳跃</div>
-
-      <button onClick={() => setGameplayPaused(true)} className="absolute right-4 top-4 z-40 px-3 py-1 bg-white/85 rounded-full text-xs">
-        暂停
-      </button>
-
-      <div className="absolute left-4 right-16 top-14 z-40 flex gap-2 text-xs">
-        <div className="bg-white/70 rounded-full px-3 py-1 text-[#4a4443]">🍊 {orangeCount}/5</div>
-        <div className="bg-white/70 rounded-full px-3 py-1 text-[#4a4443]">⭐ {starCount}/10</div>
-        <div className={`rounded-full px-3 py-1 ${timeLeft <= 20 ? 'bg-rose-200 text-rose-700' : 'bg-white/70 text-[#4a4443]'}`}>⏱ {timeLeft}s</div>
-      </div>
+      <LevelTopBar
+        title="🧱 积木世界快乐跳跃"
+        onPause={() => setGameplayPaused(true)}
+        stats={[
+          { label: '🍊', value: `${orangeCount}/5` },
+          { label: '⭐', value: `${starCount}/10` },
+          { label: '⏱', value: `${timeLeft}s` }
+        ]}
+      />
 
       <div ref={stageRef} className="absolute left-0 right-0 top-0 overflow-hidden" style={{ height: PLAY_VIEW_H }}>
         <div className="absolute left-0 w-full" style={{ height: WORLD_H, transform: `translateY(${-cameraY}px)` }}>
@@ -489,7 +480,7 @@ export const Level3JumpGame: React.FC = () => {
             onPointerDown={() => setLeftPressed(true)}
             onPointerUp={() => setLeftPressed(false)}
             onPointerLeave={() => setLeftPressed(false)}
-            className="w-20 h-20 rounded-3xl bg-white/40 backdrop-blur-md border border-white/75 text-3xl text-[#4a4443] shadow-[inset_0_2px_8px_rgba(255,255,255,0.35)]"
+            className="w-20 h-20 rounded-3xl bg-white/40 backdrop-blur-md border border-white/75 text-3xl text-[#1a3348] shadow-[inset_0_2px_8px_rgba(255,255,255,0.35)]"
           >
             ←
           </button>
@@ -497,14 +488,14 @@ export const Level3JumpGame: React.FC = () => {
             onPointerDown={() => setRightPressed(true)}
             onPointerUp={() => setRightPressed(false)}
             onPointerLeave={() => setRightPressed(false)}
-            className="w-20 h-20 rounded-3xl bg-white/40 backdrop-blur-md border border-white/75 text-3xl text-[#4a4443] shadow-[inset_0_2px_8px_rgba(255,255,255,0.35)]"
+            className="w-20 h-20 rounded-3xl bg-white/40 backdrop-blur-md border border-white/75 text-3xl text-[#1a3348] shadow-[inset_0_2px_8px_rgba(255,255,255,0.35)]"
           >
             →
           </button>
         </div>
         <button
           onPointerDown={triggerJump}
-          className="w-24 h-24 rounded-3xl bg-white/40 backdrop-blur-md border border-white/75 text-4xl text-[#4a4443] shadow-[inset_0_2px_8px_rgba(255,255,255,0.35)]"
+          className="w-24 h-24 rounded-3xl bg-white/40 backdrop-blur-md border border-white/75 text-4xl text-[#1a3348] shadow-[inset_0_2px_8px_rgba(255,255,255,0.35)]"
         >
           ↑
         </button>
@@ -514,16 +505,6 @@ export const Level3JumpGame: React.FC = () => {
         <div className="absolute right-4 top-32 z-50">
           <button onClick={testCompleteLevel} className="px-3 py-2 bg-black/35 text-white rounded-full text-xs">测试通关</button>
         </div>
-      )}
-
-      {gameplayPaused && (
-        <PauseMenu
-          adminMode={adminMode}
-          onContinue={() => setGameplayPaused(false)}
-          onRestart={restartCurrentLevel}
-          onGoHome={goLevelSelect}
-          onAdminComplete={testCompleteLevel}
-        />
       )}
     </div>
   );

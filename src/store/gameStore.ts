@@ -69,18 +69,34 @@ const buildDefaultSave = (): SaveData => {
   };
 };
 
+const normalizeSaveDataToStarOranges = (input: SaveData): SaveData => {
+  const base = buildDefaultSave();
+  const mergedLevels: Record<string, LevelRecord> = { ...base.levels, ...(input.levels ?? {}) };
+  const normalizedLevels: Record<string, LevelRecord> = {};
+  let totalStarOranges = 0;
+  Object.entries(mergedLevels).forEach(([key, value]) => {
+    const starValue = Math.max(0, value?.stars ?? 0);
+    normalizedLevels[key] = {
+      stars: starValue,
+      bestOrange: starValue,
+      completed: Boolean(value?.completed)
+    };
+    totalStarOranges += starValue;
+  });
+  return {
+    totalOranges: totalStarOranges,
+    unlockedLevels: Array.isArray(input.unlockedLevels) && input.unlockedLevels.length > 0 ? input.unlockedLevels : [1],
+    levels: normalizedLevels,
+    unlockedItems: Array.isArray(input.unlockedItems) ? input.unlockedItems : []
+  };
+};
+
 const safeLoad = (key: string): SaveData => {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return buildDefaultSave();
     const parsed = JSON.parse(raw) as SaveData;
-    const base = buildDefaultSave();
-    return {
-      totalOranges: parsed.totalOranges ?? 0,
-      unlockedLevels: Array.isArray(parsed.unlockedLevels) && parsed.unlockedLevels.length > 0 ? parsed.unlockedLevels : [1],
-      levels: { ...base.levels, ...(parsed.levels ?? {}) },
-      unlockedItems: Array.isArray((parsed as SaveData).unlockedItems) ? (parsed as SaveData).unlockedItems : []
-    };
+    return normalizeSaveDataToStarOranges(parsed);
   } catch {
     return buildDefaultSave();
   }
@@ -94,6 +110,7 @@ interface GameState {
   status: PageStatus;
   currentLevelId: number;
   gameplayPaused: boolean;
+  runId: number;
   adminMode: boolean;
   showAdminLogin: boolean;
   adminExitCount: number;
@@ -105,8 +122,6 @@ interface GameState {
   stars: number;
   stats: GameStats;
 
-  runOranges: number;
-  runOrangeTotal: number;
   pinkBubbles: number;
   placeholderProgress: number;
   playerSlot: string;
@@ -131,8 +146,6 @@ interface GameState {
   recordHit: (type: 'perfect' | 'good' | 'oops') => void;
   spawnNoteDrop: () => void;
   collectNoteDrop: () => void;
-  addRunOrange: (count?: number) => void;
-  setRunOrangeTotal: (total: number) => void;
   setPlaceholderProgress: (progress: number) => void;
 
   testCompleteLevel: () => void;
@@ -163,6 +176,7 @@ export const useGameStore = create<GameState>((set, get) => {
     status: 'home',
     currentLevelId: 1,
     gameplayPaused: false,
+    runId: 0,
     adminMode,
     showAdminLogin: false,
     adminExitCount: parsedSession.exitCount ?? 0,
@@ -172,8 +186,6 @@ export const useGameStore = create<GameState>((set, get) => {
     combo: 0,
     stars: 0,
     stats: emptyStats(),
-    runOranges: 0,
-    runOrangeTotal: 0,
     pinkBubbles: 0,
     placeholderProgress: 0,
     playerSlot,
@@ -184,19 +196,18 @@ export const useGameStore = create<GameState>((set, get) => {
     enterLevelStart: (levelId) => set({ status: 'level_intro', currentLevelId: levelId, gameplayPaused: false }),
     proceedToStartScreen: () => set({ status: 'start', gameplayPaused: false }),
     startGame: () =>
-      set({
+      set((state) => ({
         status: 'playing',
+        runId: state.runId + 1,
         fullness: 0,
         notesCollected: 0,
         combo: 0,
         stars: 0,
         stats: emptyStats(),
-        runOranges: 0,
-        runOrangeTotal: 0,
         pinkBubbles: 0,
         placeholderProgress: 0,
         gameplayPaused: false
-      }),
+      })),
     restartCurrentLevel: () => get().startGame(),
     setGameplayPaused: (paused) => set({ gameplayPaused: paused }),
 
@@ -260,7 +271,8 @@ export const useGameStore = create<GameState>((set, get) => {
           newFullness = Math.min(100, state.fullness + 1);
           newCombo += 1;
         } else {
-          newFullness = Math.max(0, state.fullness - 1);
+          // 第一关漏接不再倒扣进度，只计为失误并清空连击。
+          newFullness = state.fullness;
           newCombo = 0;
         }
         const stats = { ...state.stats, [type]: state.stats[type] + 1, total: state.stats.total + 1 };
@@ -274,19 +286,8 @@ export const useGameStore = create<GameState>((set, get) => {
         if (state.status !== 'playing') return state;
         const notesCollected = state.notesCollected + 1;
         const pinkBubbles = state.pinkBubbles + 1;
-        let runOranges = state.runOranges;
-        let fullness = state.fullness;
-        if (pinkBubbles % 10 === 0) {
-          runOranges += 1;
-          fullness = Math.min(100, state.fullness + 5);
-        }
-        return { notesCollected, pinkBubbles, runOranges, fullness };
+        return { notesCollected, pinkBubbles };
       }),
-    addRunOrange: (count = 1) =>
-      set((state) => ({
-        runOranges: state.runOranges + count
-      })),
-    setRunOrangeTotal: (total) => set({ runOrangeTotal: total }),
     setPlaceholderProgress: (progress) =>
       set((state) => {
         const next = Math.min(100, Math.max(progress, 0));
@@ -296,20 +297,16 @@ export const useGameStore = create<GameState>((set, get) => {
         return { placeholderProgress: next };
       }),
     testCompleteLevel: () => {
-      const state = get();
-      const levelCfg = LEVELS.find((l) => l.levelId === state.currentLevelId);
-      const allOranges = levelCfg ? levelCfg.orangeSpawnConfig.max : 10;
-      get().completeLevel({ stars: 3, orangesCollected: allOranges, orangeTotal: allOranges });
+      get().completeLevel({ stars: 3, orangesCollected: 3, orangeTotal: 3 });
     },
-    completeLevel: ({ stars, orangesCollected, orangeTotal }) =>
+    completeLevel: ({ stars, orangesCollected: _orangesCollected, orangeTotal: _orangeTotal }) =>
       set((state) => {
         const levelKey = String(state.currentLevelId);
         const prev = state.saveData.levels[levelKey] ?? { stars: 0, bestOrange: 0, completed: false };
-        const bestOrange = Math.max(prev.bestOrange, orangesCollected);
-        const orangeDelta = Math.max(0, orangesCollected - prev.bestOrange);
+        const orangeByStars = Math.max(prev.bestOrange, stars);
         const updatedLevel: LevelRecord = {
           stars: Math.max(prev.stars, stars),
-          bestOrange,
+          bestOrange: orangeByStars,
           completed: true
         };
         const unlocked = new Set(state.saveData.unlockedLevels);
@@ -317,18 +314,17 @@ export const useGameStore = create<GameState>((set, get) => {
         if (state.currentLevelId < 24) unlocked.add(state.currentLevelId + 1);
         const nextData: SaveData = {
           ...state.saveData,
-          totalOranges: state.saveData.totalOranges + orangeDelta,
+          totalOranges: 0,
           unlockedLevels: [...unlocked].sort((a, b) => a - b),
           levels: { ...state.saveData.levels, [levelKey]: updatedLevel }
         };
+        nextData.totalOranges = Object.values(nextData.levels).reduce((acc, lv) => acc + (lv.stars ?? 0), 0);
         persistCurrentMode({ ...state, saveData: nextData } as GameState, nextData);
         return {
           saveData: nextData,
           status: 'gameover',
           gameplayPaused: false,
-          stars,
-          runOranges: orangesCollected,
-          runOrangeTotal: orangeTotal
+          stars
         };
       }),
     goNextLevel: () =>
@@ -346,13 +342,7 @@ export const useGameStore = create<GameState>((set, get) => {
         const cloudStr = normalizeCloudValue(raw);
         if (!cloudStr) return;
         const cloudData = JSON.parse(cloudStr) as SaveData;
-        const base = buildDefaultSave();
-        const merged: SaveData = {
-          totalOranges: cloudData.totalOranges ?? 0,
-          unlockedLevels: Array.isArray(cloudData.unlockedLevels) && cloudData.unlockedLevels.length > 0 ? cloudData.unlockedLevels : [1],
-          levels: { ...base.levels, ...(cloudData.levels ?? {}) },
-          unlockedItems: Array.isArray(cloudData.unlockedItems) ? cloudData.unlockedItems : []
-        };
+        const merged = normalizeSaveDataToStarOranges(cloudData);
         safeSave(PLAYER_KEY, merged);
         set({ saveData: merged });
       } catch {

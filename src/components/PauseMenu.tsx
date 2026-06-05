@@ -1,4 +1,5 @@
 import React from 'react';
+import { FRESH, mobileTextMin, mobileTextTitle, pauseBtnPrimary, pauseBtnSecondary, pauseOverlay, pausePanel } from '../utils/levelTheme';
 
 interface PauseMenuProps {
   adminMode: boolean;
@@ -14,25 +15,41 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
   onRestart,
   onGoHome,
   onAdminComplete
-}) => {
-  return (
-    <div className="fixed inset-0 z-[80] bg-black/40 pointer-events-auto flex items-center justify-center">
-      <div className="bg-white rounded-2xl p-4 w-56 space-y-2 text-sm">
-        <button onClick={onContinue} className="w-full bg-[#FADCD9] text-white py-2 rounded-xl">
+}) => (
+  <div className={pauseOverlay}>
+    <div className={pausePanel}>
+      <h3 className={`text-center ${mobileTextTitle} font-bold mb-1`} style={{ color: FRESH.text }}>
+        游戏暂停
+      </h3>
+      <p className={`text-center ${mobileTextMin} mb-4`} style={{ color: FRESH.textMuted }}>
+        休息一下，准备好了再继续
+      </p>
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={onContinue}
+          className={pauseBtnPrimary}
+          style={{ background: `linear-gradient(135deg, ${FRESH.sky}, ${FRESH.sage})` }}
+        >
           继续游戏
         </button>
-        <button onClick={onRestart} className="w-full bg-gray-100 py-2 rounded-xl">
+        <button type="button" onClick={onRestart} className={pauseBtnSecondary}>
           重新开始
         </button>
-        <button onClick={onGoHome} className="w-full bg-gray-100 py-2 rounded-xl">
-          返回主页
+        <button type="button" onClick={onGoHome} className={pauseBtnSecondary}>
+          返回选关
         </button>
         {adminMode && onAdminComplete && (
-          <button onClick={onAdminComplete} className="w-full bg-red-50 py-2 rounded-xl">
+          <button
+            type="button"
+            onClick={onAdminComplete}
+            className={`w-full py-2.5 rounded-2xl ${mobileTextMin} font-semibold active:scale-[0.98]`}
+            style={{ color: FRESH.text, background: FRESH.accentSoft, border: `1px solid ${FRESH.mist}88` }}
+          >
             测试通关
           </button>
         )}
       </div>
     </div>
-  );
-};
+  </div>
+);

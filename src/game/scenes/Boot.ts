@@ -8,29 +8,33 @@ export class Boot extends Scene {
   preload() {
     // Load background and cover images
     this.load.image('bg-room', 'https://miaoda-site-img.cdn.bcebos.com/images/baidu_image_search_65bcd67e-df05-473b-8f3f-d000739cbea5.jpg');
-    this.load.image('bg-game', 'https://miaoda-conversation-file.cdn.bcebos.com/user-avwkn2g7m9ds/conv-avx47of1d0cg/20260411/file-avy10ggvz4e8.png');
-    this.load.image('bottle', 'https://miaoda-conversation-file.cdn.bcebos.com/user-avwkn2g7m9ds/conv-avx47of1d0cg/20260411/file-avxqgb6iqjnk.png');
+    this.load.image('bg-game', '/images/奶嘴添添.png');
+    // 奶瓶优先本地生成，避免 CDN 失败导致游戏中不可见
+    this.load.image('bottle-hd', 'https://miaoda-conversation-file.cdn.bcebos.com/user-avwkn2g7m9ds/conv-avx47of1d0cg/20260411/file-avxqgb6iqjnk.png');
     
     // Load BGM placeholder
     // Here we use a placeholder since the actual MP3 isn't hosted, but this represents "我们"
     this.load.audio('bgm-women', 'https://miaoda-conversation-file.cdn.bcebos.com/user-avwkn2g7m9ds/conv-avx47of1d0cg/20260411/file-avxq5ckc7klc.mp3');
 
     // Handle load errors gracefully
-    this.load.on('loaderror', (fileObj: any) => {
+    this.load.on('loaderror', (fileObj: { key?: string; type?: string }) => {
       console.error('Failed to load asset:', fileObj.key);
-      if (fileObj.type === 'image') {
-        const g = this.add.graphics();
-        const w = this.cameras.main.width;
-        const h = this.cameras.main.height;
-        g.fillGradientStyle(0xFADCD9, 0xB2CEE5, 0xB2CEE5, 0xFADCD9);
-        g.fillRect(0,0,w,h);
-        g.generateTexture(fileObj.key, w, h);
-        g.destroy();
-      }
     });
 
     // Generate placeholder textures using Graphics
     const g = this.add.graphics();
+
+    // 奶瓶（本地贴图，保证离线/内置浏览器也能显示）
+    g.fillStyle(0xffffff, 1);
+    g.fillRoundedRect(18, 36, 64, 108, 18);
+    g.fillStyle(0xfadcd9, 0.75);
+    g.fillRoundedRect(26, 58, 48, 72, 12);
+    g.fillStyle(0xffffff, 1);
+    g.fillRoundedRect(32, 8, 36, 36, 10);
+    g.lineStyle(3, 0xe9c4c0, 1);
+    g.strokeRoundedRect(18, 36, 64, 108, 18);
+    g.generateTexture('bottle', 100, 152);
+    g.clear();
     
     // Note / Milk drop (circular)
     g.fillStyle(0xB2CEE5, 1);

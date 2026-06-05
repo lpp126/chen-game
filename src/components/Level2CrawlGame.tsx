@@ -1,16 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
-import { PauseMenu } from './PauseMenu';
+import { LevelTopBar } from './LevelTopBar';
 
 type Point = { x: number; y: number };
 
-const WORLD_W = 750;
-const WORLD_H = 1330;
-const CELL = 38; // 缩小格子，提升迷宫密度
-const MAZE_COLS = 17; // 奇数，便于递归回溯挖路
-const MAZE_ROWS = 33; // 奇数
-const OFFSET_X = 52; // 让迷宫居中显示
-const OFFSET_Y = 38;
+const CELL = 40;
+const MAZE_COLS = 17;
+const MAZE_ROWS = 33;
+const OFFSET_X = 20;
+const OFFSET_Y = 12;
+const MAZE_W = OFFSET_X + MAZE_COLS * CELL;
+const MAZE_H = OFFSET_Y + MAZE_ROWS * CELL;
+/** 适配顶栏下方区域，略留边距、不裁切 */
+const MAZE_FIT_BOOST = 0.92;
+const STAGE_TOP = 76;
 
 const cellCenter = (gx: number, gy: number): Point => ({
   x: OFFSET_X + gx * CELL + CELL / 2,
@@ -59,9 +62,8 @@ export const Level2CrawlGame: React.FC = () => {
     gameplayPaused,
     setGameplayPaused,
     completeLevel,
-    runOranges,
-    setRunOrangeTotal,
     adminMode,
+    runId,
     restartCurrentLevel,
     goLevelSelect,
     goNextLevel
@@ -79,6 +81,8 @@ export const Level2CrawlGame: React.FC = () => {
   const [swipeStartY, setSwipeStartY] = useState<number | null>(null);
   const dragRef = useRef({ dragging: false, moved: false, sx: 0, sy: 0 });
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const fitRef = useRef({ scale: 1, offsetX: 0, offsetY: 0 });
+  const [fitScale, setFitScale] = useState(1);
 
   const isActive = status === 'playing' && currentLevelId === 2;
   const exitPos = cellCenter(MAZE_COLS - 2, MAZE_ROWS - 2);
@@ -93,9 +97,50 @@ export const Level2CrawlGame: React.FC = () => {
 
   useEffect(() => {
     if (!isActive) return;
-    setRunOrangeTotal(0);
     setStartAt(Date.now());
-  }, [isActive, setRunOrangeTotal]);
+    setPlayer(cellCenter(1, 1));
+    setPath([]);
+    setBlockMark(null);
+    setFootprints([]);
+    setToast('');
+    setStandingMode(false);
+  }, [isActive, runId]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    const el = stageRef.current;
+    if (!el) return;
+
+    const updateFit = () => {
+      const node = stageRef.current;
+      if (!node) return;
+      // 用布局尺寸（750 稿内坐标），避免外层 transform: scale 导致内置/外置浏览器算出来不一致
+      const width = node.clientWidth;
+      const height = node.clientHeight;
+      if (width <= 0 || height <= 0) return;
+
+      const scale = Math.min(width / MAZE_W, height / MAZE_H) * MAZE_FIT_BOOST;
+      const drawW = MAZE_W * scale;
+      const drawH = MAZE_H * scale;
+      fitRef.current = {
+        scale,
+        offsetX: (width - drawW) / 2,
+        offsetY: (height - drawH) / 2
+      };
+      setFitScale(scale);
+    };
+
+    updateFit();
+    const raf = requestAnimationFrame(updateFit);
+    const observer = new ResizeObserver(updateFit);
+    observer.observe(el);
+    window.addEventListener('resize', updateFit);
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+      window.removeEventListener('resize', updateFit);
+    };
+  }, [isActive]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -166,13 +211,17 @@ export const Level2CrawlGame: React.FC = () => {
   };
 
   const toWorldPoint = (clientX: number, clientY: number): Point => {
-    const rect = stageRef.current?.getBoundingClientRect();
-    if (!rect) return { x: clientX, y: clientY };
-    const scaleX = WORLD_W / rect.width;
-    const scaleY = WORLD_H / rect.height;
+    const el = stageRef.current;
+    if (!el) return { x: clientX, y: clientY };
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return { x: 0, y: 0 };
+
+    const logicalX = ((clientX - rect.left) / rect.width) * el.clientWidth;
+    const logicalY = ((clientY - rect.top) / rect.height) * el.clientHeight;
+    const { scale, offsetX, offsetY } = fitRef.current;
     return {
-      x: Math.min(Math.max((clientX - rect.left) * scaleX, 0), WORLD_W - 1),
-      y: Math.min(Math.max((clientY - rect.top) * scaleY, 0), WORLD_H - 1)
+      x: Math.min(Math.max((logicalX - offsetX) / scale, 0), MAZE_W - 1),
+      y: Math.min(Math.max((logicalY - offsetY) / scale, 0), MAZE_H - 1)
     };
   };
 
@@ -201,25 +250,30 @@ export const Level2CrawlGame: React.FC = () => {
   const doFinish = () => {
     const elapsed = (Date.now() - startAt) / 1000;
     const starsRank = elapsed <= 90 ? 3 : 2;
-    completeLevel({ stars: starsRank, orangesCollected: runOranges, orangeTotal: 0 });
+    completeLevel({ stars: starsRank, orangesCollected: starsRank, orangeTotal: 3 });
   };
 
   const adminDirectPass = () => {
-    completeLevel({ stars: 3, orangesCollected: runOranges, orangeTotal: 0 });
+    completeLevel({ stars: 3, orangesCollected: 3, orangeTotal: 3 });
   };
 
   const adminNextLevel = () => {
-    completeLevel({ stars: 3, orangesCollected: runOranges, orangeTotal: 0 });
+    completeLevel({ stars: 3, orangesCollected: 3, orangeTotal: 3 });
     setTimeout(() => goNextLevel(), 60);
   };
 
   if (!isActive) return null;
 
   return (
-    <div className="absolute inset-0 z-30 pointer-events-auto bg-[#f6efe8] overflow-hidden">
-      <div className="absolute left-3 top-3 z-20 bg-white/80 px-3 py-1 rounded-full text-sm">第2关 匍匐的星轨（高难迷宫）</div>
+    <div className="absolute inset-0 z-30 pointer-events-auto bg-[#dcecf5] overflow-hidden">
+      <LevelTopBar
+        title="🐣 摇摇晃晃向前冲"
+        onPause={() => setGameplayPaused(true)}
+        stats={[]}
+      />
+
       {adminMode && (
-        <div className="absolute right-4 top-28 z-30 pointer-events-auto">
+        <div className="absolute right-4 top-36 z-[90] pointer-events-auto">
           <button
             onClick={() => setShowAdminTools((v) => !v)}
             className="px-3 py-2 bg-black/30 text-white rounded-full text-xs"
@@ -235,22 +289,11 @@ export const Level2CrawlGame: React.FC = () => {
           )}
         </div>
       )}
-      <button
-        onClick={() => setGameplayPaused(true)}
-        className="absolute right-4 top-3 z-20 px-3 py-1 bg-white/85 rounded-full text-xs"
-      >
-        暂停
-      </button>
 
       <div
         ref={stageRef}
-        className="absolute inset-0 touch-none"
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, rgba(70,70,70,0.10) 1px, transparent 1px), linear-gradient(to bottom, rgba(70,70,70,0.10) 1px, transparent 1px)',
-          backgroundSize: `${CELL}px ${CELL}px`,
-          backgroundPosition: `${OFFSET_X}px ${OFFSET_Y}px`
-        }}
+        className="absolute inset-x-0 bottom-0 touch-none overflow-hidden flex items-center justify-center"
+        style={{ top: STAGE_TOP }}
         onPointerDown={(e) => {
           dragRef.current = { dragging: true, moved: false, sx: e.clientX, sy: e.clientY };
         }}
@@ -265,7 +308,19 @@ export const Level2CrawlGame: React.FC = () => {
           dragRef.current.dragging = false;
         }}
       >
-        <div className="absolute" style={{ width: WORLD_W, height: WORLD_H }}>
+        <div
+          className="relative shrink-0"
+          style={{
+            width: MAZE_W,
+            height: MAZE_H,
+            transform: `scale(${fitScale})`,
+            transformOrigin: 'center center',
+            backgroundImage:
+              'linear-gradient(to right, rgba(70,70,70,0.10) 1px, transparent 1px), linear-gradient(to bottom, rgba(70,70,70,0.10) 1px, transparent 1px)',
+            backgroundSize: `${CELL}px ${CELL}px`,
+            backgroundPosition: `${OFFSET_X}px ${OFFSET_Y}px`
+          }}
+        >
           {maze.map((row, gy) =>
             row.map((cell, gx) =>
               cell === 1 ? (
@@ -292,7 +347,11 @@ export const Level2CrawlGame: React.FC = () => {
         </div>
       </div>
 
-      {toast && <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-black/60 text-white px-4 py-2 rounded-full z-30">{toast}</div>}
+      {toast && (
+        <div className="absolute left-1/2 -translate-x-1/2 z-[90] bg-black/60 text-white px-4 py-2 rounded-full text-sm" style={{ top: STAGE_TOP + 8 }}>
+          {toast}
+        </div>
+      )}
 
       {standingMode && !gameplayPaused && (
         <div
@@ -317,16 +376,6 @@ export const Level2CrawlGame: React.FC = () => {
           <div className="text-6xl animate-bounce">⬆️</div>
           <p className="mt-3 text-white font-bold">向上轻扫，完成站立</p>
         </div>
-      )}
-
-      {gameplayPaused && (
-        <PauseMenu
-          adminMode={adminMode}
-          onContinue={() => setGameplayPaused(false)}
-          onRestart={restartCurrentLevel}
-          onGoHome={goLevelSelect}
-          onAdminComplete={adminDirectPass}
-        />
       )}
     </div>
   );
