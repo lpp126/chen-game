@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
+import { DESIGN_WIDTH, DESIGN_HEIGHT } from '../utils/levelTheme';
 
 type EdgeType = -1 | 0 | 1;
 
@@ -36,7 +37,7 @@ const BOARD_SIZE = 560;
 const CELL = BOARD_SIZE / GRID;
 const TAB = 20;
 const PIECE_SIZE = CELL + TAB * 2;
-const BOARD_X = (750 - BOARD_SIZE) / 2;
+const BOARD_X = (DESIGN_WIDTH - BOARD_SIZE) / 2;
 const BOARD_Y = 96;
 const SNAP_DISTANCE = 58;
 const LEVEL_TIME_TARGET = 120;
@@ -47,8 +48,8 @@ const SNAP_TARGET_Y_OFFSET = CELL - PIECE_SIZE / 3 + PIECE_SIZE / 10;
 const toStagePoint = (stage: HTMLDivElement, clientX: number, clientY: number) => {
   const rect = stage.getBoundingClientRect();
   return {
-    x: (clientX - rect.left) * (750 / rect.width),
-    y: (clientY - rect.top) * (1330 / rect.height)
+    x: (clientX - rect.left) * (DESIGN_WIDTH / rect.width),
+    y: (clientY - rect.top) * (DESIGN_HEIGHT / rect.height)
   };
 };
 

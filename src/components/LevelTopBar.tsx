@@ -9,16 +9,24 @@ interface LevelTopBarProps {
   onPause: () => void;
   hint?: string;
   extra?: React.ReactNode;
+  /** 第 1 关：不遮挡 Phaser 下落轨迹 */
+  variant?: 'default' | 'minimal';
 }
 
 export { LEVEL_TOP_RESERVED } from '../utils/levelTheme';
 
-export const LevelTopBar: React.FC<LevelTopBarProps> = ({ title, stats, onPause, hint, extra }) => (
+export const LevelTopBar: React.FC<LevelTopBarProps> = ({ title, stats, onPause, hint, extra, variant = 'default' }) => {
+  const minimal = variant === 'minimal';
+  const panelClass = minimal
+    ? 'rounded-[1.15rem] bg-white/20 backdrop-blur-[2px] border border-white/35 shadow-none'
+    : hudGlass;
+
+  return (
   <header
     className={`relative z-[80] shrink-0 pt-3 pb-2 pointer-events-auto ${mobileContentInset}`}
-    style={{ background: `linear-gradient(180deg, ${FRESH.bg} 0%, ${FRESH.bgMid}ee 70%, transparent 100%)` }}
+    style={minimal ? undefined : { background: `linear-gradient(180deg, ${FRESH.bg}cc 0%, transparent 52%)` }}
   >
-    <div className={`${hudGlass} px-3.5 py-2.5`}>
+    <div className={`${panelClass} px-3.5 py-2.5`}>
       <div className="flex items-center gap-2.5">
         <p className={`flex-1 min-w-0 ${mobileTextTitle} font-bold truncate leading-tight`} style={{ color: FRESH.text }}>
           {title}
@@ -57,4 +65,5 @@ export const LevelTopBar: React.FC<LevelTopBarProps> = ({ title, stats, onPause,
       {extra && <div className="mt-2">{extra}</div>}
     </div>
   </header>
-);
+  );
+};

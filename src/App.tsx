@@ -36,7 +36,7 @@ import { Level24BirthdayGame } from './components/Level24BirthdayGame';
 import { LevelIntroScreen } from './components/LevelIntroScreen';
 import { GamePauseOverlay } from './components/GamePauseOverlay';
 import { useGameStore } from './store/gameStore';
-import { FRESH } from './utils/levelTheme';
+import { FRESH, DESIGN_WIDTH, DESIGN_HEIGHT } from './utils/levelTheme';
 
 export default function App() {
   const initialized = useRef(false);
@@ -45,8 +45,8 @@ export default function App() {
 
   useEffect(() => {
     const handleResize = () => {
-      const scaleX = window.innerWidth / 750;
-      const scaleY = window.innerHeight / 1330;
+      const scaleX = window.innerWidth / DESIGN_WIDTH;
+      const scaleY = window.innerHeight / DESIGN_HEIGHT;
       setScale(Math.min(scaleX, scaleY));
     };
     window.addEventListener('resize', handleResize);
@@ -61,8 +61,8 @@ export default function App() {
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
       parent: 'game-container',
-      width: 750,
-      height: 1330,
+      width: DESIGN_WIDTH,
+      height: DESIGN_HEIGHT,
       scene: [Boot, Game, GameOver],
       scale: {
         mode: Phaser.Scale.NONE,
@@ -92,8 +92,8 @@ export default function App() {
       <div 
         className="relative overflow-hidden shrink-0"
         style={{
-          width: '750px',
-          height: '1330px',
+          width: `${DESIGN_WIDTH}px`,
+          height: `${DESIGN_HEIGHT}px`,
           transform: `scale(${scale})`,
           transformOrigin: 'center center',
           background: FRESH.bgGrad

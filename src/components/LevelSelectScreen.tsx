@@ -104,7 +104,7 @@ export const LevelSelectScreen: React.FC = () => {
         <p className={`${mobileTextMin} font-semibold mb-3 px-1`} style={{ color: FRESH.textMuted }}>
           全部关卡
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           {LEVELS.map((level) => {
             const theme = getLevelStartTheme(level.levelId);
             const unlocked = DEV_UNLOCK_ALL_LEVELS || adminMode || saveData.unlockedLevels.includes(level.levelId);
@@ -118,9 +118,9 @@ export const LevelSelectScreen: React.FC = () => {
                 type="button"
                 disabled={!unlocked}
                 onClick={() => enterLevelStart(level.levelId)}
-                className={`text-left rounded-[1.15rem] border-2 p-3.5 transition-all active:scale-[0.98] ${
+                className={`text-left rounded-[1rem] border-2 p-2.5 transition-all active:scale-[0.98] ${
                   unlocked
-                    ? 'bg-white/80 backdrop-blur-sm shadow-[0_8px_22px_rgba(26,51,72,0.1)]'
+                    ? 'bg-white/80 backdrop-blur-sm shadow-[0_6px_18px_rgba(26,51,72,0.08)]'
                     : 'bg-white/35 opacity-50'
                 } ${isNext ? 'ring-2 ring-offset-2 ring-offset-transparent' : ''}`}
                 style={{
@@ -130,29 +130,29 @@ export const LevelSelectScreen: React.FC = () => {
               >
                 {isNext && (
                   <span
-                    className="inline-block mb-2 text-xs font-bold px-2 py-0.5 rounded-full text-white"
+                    className="inline-block mb-1 text-[11px] font-bold px-1.5 py-px rounded-full text-white leading-tight"
                     style={{ background: theme.accent }}
                   >
                     继续这里
                   </span>
                 )}
-                <div className="flex items-start gap-2.5 mb-2.5">
+                <div className="flex items-center gap-2 mb-1.5">
                   <div
-                    className="shrink-0 w-12 h-12 rounded-[0.85rem] flex items-center justify-center text-[1.625rem] border-2 border-white/85 shadow-sm"
+                    className="shrink-0 w-10 h-10 rounded-[0.7rem] flex items-center justify-center text-[1.35rem] border-2 border-white/85 shadow-sm"
                     style={{ background: theme.orbGradient }}
                   >
                     {unlocked ? theme.emoji : '🔒'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`${mobileTextTitle} font-bold`} style={{ color: FRESH.text }}>
+                    <p className={`${mobileTextMin} font-semibold leading-none`} style={{ color: FRESH.textMuted }}>
                       第{level.levelId}关
                     </p>
-                    <p className={`${mobileTextMin} leading-snug line-clamp-2 mt-0.5`} style={{ color: FRESH.textSoft }}>
+                    <p className={`${mobileTextTitle} font-bold leading-tight mt-0.5 truncate`} style={{ color: FRESH.text }}>
                       {level.title}
                     </p>
                   </div>
                 </div>
-                <div className={`flex items-center justify-between ${mobileTextMin} pt-2 border-t border-white/60`} style={{ color: FRESH.textSoft }}>
+                <div className={`flex items-center justify-between ${mobileTextMin} pt-1.5 border-t border-white/60`} style={{ color: FRESH.textSoft }}>
                   <StarMini count={rec?.stars ?? 0} accent={theme.accent} />
                   <span>🍊 {rec?.bestOrange ?? 0}</span>
                 </div>

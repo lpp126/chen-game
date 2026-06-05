@@ -9,6 +9,10 @@ export const GameOver: React.FC = () => {
   if (status !== 'gameover') return null;
 
   const isLast = currentLevelId >= LEVELS.length;
+  const settlementImage =
+    currentLevelId === 1 ? '/images/第一关结算.png' :
+    currentLevelId === 2 ? '/images/第二关结算.png' :
+    null;
 
   return (
     <div
@@ -33,12 +37,20 @@ export const GameOver: React.FC = () => {
       </div>
 
       <div className="w-full max-w-sm mb-6 flex justify-center">
-        <div
-          className="w-36 h-36 rounded-2xl border-2 border-dashed bg-white/60 flex items-center justify-center text-center px-3 text-xs"
-          style={{ borderColor: `${FRESH.mist}88`, color: `${FRESH.text}99` }}
-        >
-          结算表情包占位
-        </div>
+        {settlementImage ? (
+          <img
+            src={settlementImage}
+            alt={`第${currentLevelId}关结算`}
+            className="w-44 h-44 object-contain drop-shadow-md"
+          />
+        ) : (
+          <div
+            className="w-36 h-36 rounded-2xl border-2 border-dashed bg-white/60 flex items-center justify-center text-center px-3 text-xs"
+            style={{ borderColor: `${FRESH.mist}88`, color: `${FRESH.text}99` }}
+          >
+            结算表情包占位
+          </div>
+        )}
       </div>
 
       <div className="bg-white/90 rounded-3xl p-4 w-full max-w-sm shadow-xl space-y-3 mb-6 border border-white/80">

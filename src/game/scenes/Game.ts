@@ -1,10 +1,12 @@
 import { Scene } from 'phaser';
 import { useGameStore } from '../../store/gameStore';
+import { LEVEL1_HUD_HEIGHT } from '../../utils/levelTheme';
 
 const BPM = 74; // Adjusted to match a slow ballad pace
 const BEAT_INTERVAL = 60000 / BPM; 
 const DROP_TIME = 2000; // 时间从顶部落到判定线
 const START_GRACE_MS = 1800; // 开局喘息时间，避免重开后立即掉落奶滴
+const TRACK_TOP_GAP = 8;
 
 interface Note {
   id: number;
@@ -22,8 +24,12 @@ export class Game extends Scene {
   private leftTrackX!: number;
   private rightTrackX!: number;
   private hitY!: number;
-  /**  gameplay 整体下移，为顶部 React HUD 留出空间 */
+  /** 轻微下移背景/表情，与旧版一致 */
   private contentOffsetY = 0;
+  /** 奶滴轨迹起点（HUD 下缘 + 间距，仅影响音符与轨道线） */
+  private trackTopY = LEVEL1_HUD_HEIGHT + TRACK_TOP_GAP;
+  private lastHudHeight = 0;
+  private trackGraphics?: Phaser.GameObjects.Graphics;
   
   private notes: Note[] = [];
   private noteIdCounter = 0;
@@ -41,7 +47,6 @@ export class Game extends Scene {
   private leftBottle!: Phaser.GameObjects.Image;
   private rightBottle!: Phaser.GameObjects.Image;
   private babyTween?: Phaser.Tweens.Tween;
-  private hitLinePulse!: Phaser.Tweens.Tween;
   
   // Audio elements
   private bgm!: Phaser.Sound.BaseSound;
@@ -58,15 +63,19 @@ export class Game extends Scene {
     const height = this.cameras.main.height;
     
     this.contentOffsetY = Math.round(height * 0.045);
+    this.trackTopY = LEVEL1_HUD_HEIGHT + TRACK_TOP_GAP;
     this.leftTrackX = width * 0.22;
     this.rightTrackX = width * 0.78;
     this.hitY = height * 0.8 + this.contentOffsetY;
 
+    // 全屏渲染，勿裁剪 viewport（裁剪会导致画面压缩错位）
+    this.cameras.main.setViewport(0, 0, width, height);
+
     this.createBackground();
     this.createTracks();
-    this.createHitLine();
     this.createBottles();
     this.createBaby();
+    this.applyPlayAreaLayout(useGameStore.getState().level1HudHeight || LEVEL1_HUD_HEIGHT);
 
     // Setup audio
     if (this.cache.audio.exists('bgm-women')) {
@@ -106,6 +115,10 @@ export class Game extends Scene {
         
         // Update visuals based on fullness
         this.updateBottleLiquid(state.fullness);
+
+        if (state.level1HudHeight !== this.lastHudHeight) {
+          this.applyPlayAreaLayout(state.level1HudHeight);
+        }
       }
     );
 
@@ -128,38 +141,36 @@ export class Game extends Scene {
 
     const currentTime = this.getCurrentGameTime(time);
     
-    // Spawn notes
+    // Spawn notes — 与下落起点对齐，勿用 START_GRACE_MS 推迟生成（否则会直接出现在奶瓶附近）
     while (this.nextSpawnIndex < this.notes.length) {
       const note = this.notes[this.nextSpawnIndex];
-      const spawnTime = note.time - DROP_TIME + START_GRACE_MS;
-      
-      if (currentTime >= spawnTime) {
+      const fallStart = note.time - DROP_TIME;
+
+      if (currentTime >= fallStart) {
         this.spawnNoteSprite(note);
         this.nextSpawnIndex++;
       } else {
-        break; // Notes are ordered by time, so we can stop checking
+        break;
       }
     }
-    
+
     // Update notes positions
     for (const note of this.notes) {
       if (!note.active || !note.sprite || note.hit) continue;
-      
+
       const timeRemaining = note.time - currentTime;
-      
+
       if (timeRemaining < -300) {
-        // Missed (Oops)
         note.active = false;
         note.sprite.destroy();
         this.recordHitResult('oops', note.track);
         continue;
       }
-      
-      // Interpolate position based on time
-      // At timeRemaining = DROP_TIME, y = 0
-      // At timeRemaining = 0, y = this.hitY
-      const progress = 1 - (timeRemaining / DROP_TIME);
-      note.sprite.y = this.hitY * progress;
+
+      const fallStart = note.time - DROP_TIME;
+      const elapsed = currentTime - fallStart;
+      const progress = Phaser.Math.Clamp(elapsed / DROP_TIME, 0, 1);
+      note.sprite.y = this.trackTopY + (this.hitY - this.trackTopY) * progress;
     }
   }
 
@@ -189,10 +200,10 @@ export class Game extends Scene {
 
   private spawnNoteSprite(note: Note) {
     const x = note.track === 0 ? this.leftTrackX : this.rightTrackX;
-    const sprite = this.add.sprite(x, 0, 'note');
+    const sprite = this.add.sprite(x, this.trackTopY, 'note');
     sprite.setOrigin(0.5);
     sprite.setScale(0.8);
-    sprite.setDepth(12);
+    sprite.setDepth(50);
     note.sprite = sprite;
     note.active = true;
   }
@@ -335,6 +346,7 @@ export class Game extends Scene {
     }
 
     const g = this.add.graphics();
+    g.setDepth(34);
     g.lineStyle(2, 0xB2CEE5, 1);
     g.strokeCircle(x, this.hitY, 60);
     this.tweens.add({
@@ -359,7 +371,7 @@ export class Game extends Scene {
       color: config.color,
       fontFamily: 'sans-serif',
       fontStyle: 'bold'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(40);
 
     this.tweens.add({
       targets: t,
@@ -408,6 +420,7 @@ export class Game extends Scene {
     const x = track === 0 ? this.leftTrackX : this.rightTrackX;
     const drop = this.add.sprite(x + Phaser.Math.Between(-30, 30), this.hitY - 20, 'blue-drop');
     drop.setInteractive();
+    drop.setDepth(48);
     
     // Float upwards slowly
     this.tweens.add({
@@ -469,12 +482,12 @@ export class Game extends Scene {
     this.leftBottle = this.add.image(this.leftTrackX, hitY, bottleKey);
     this.leftBottle.setOrigin(0.5, 0.5);
     this.leftBottle.setScale(bottleScale);
-    this.leftBottle.setDepth(30);
+    this.leftBottle.setDepth(28);
 
     this.rightBottle = this.add.image(this.rightTrackX, hitY, bottleKey);
     this.rightBottle.setOrigin(0.5, 0.5);
     this.rightBottle.setScale(bottleScale);
-    this.rightBottle.setDepth(30);
+    this.rightBottle.setDepth(28);
   }
 
   private updateBottleLiquid(fullness: number) {
@@ -492,7 +505,7 @@ export class Game extends Scene {
       fontSize: '48px',
       color: '#4A4443',
       fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(28);
+    }).setOrigin(0.5).setDepth(26);
   }
 
   private startGame(runId: number) {
@@ -500,7 +513,8 @@ export class Game extends Scene {
     this.isPaused = false;
     this.runId = runId;
     this.generateLevelData();
-    this.startTime = this.time.now;
+    // 开局喘息：推迟游戏时钟，而非推迟奶滴生成（后者会导致一出现就在底部）
+    this.startTime = this.time.now + START_GRACE_MS;
     this.pauseTime = 0;
     this.pausedDuration = 0;
     
@@ -570,37 +584,38 @@ export class Game extends Scene {
     bg.fillRect(0, 0, width, height);
   }
 
-  private createTracks() {
-    const width = this.cameras.main.width;
-    const height = this.cameras.main.height;
-    
-    const trackWidth = 2;
+  private applyPlayAreaLayout(hudHeight: number) {
+    const hudH = Math.max(Math.round(hudHeight), 96);
+    if (hudH === this.lastHudHeight) return;
+
+    this.lastHudHeight = hudH;
+    this.trackTopY = Math.min(hudH + TRACK_TOP_GAP, this.hitY - 80);
+    this.redrawTracks();
+  }
+
+  private redrawTracks() {
+    if (!this.trackGraphics) return;
+
     const leftX = this.leftTrackX;
     const rightX = this.rightTrackX;
 
-    const g = this.add.graphics();
-    g.lineStyle(trackWidth, 0x4A4443, 0.1);
-    
-    g.beginPath();
-    g.moveTo(leftX, 0);
-    g.lineTo(leftX, height);
-    g.strokePath();
+    this.trackGraphics.clear();
+    this.trackGraphics.lineStyle(2, 0x4a9fd8, 0.42);
 
-    g.beginPath();
-    g.moveTo(rightX, 0);
-    g.lineTo(rightX, height);
-    g.strokePath();
+    this.trackGraphics.beginPath();
+    this.trackGraphics.moveTo(leftX, this.trackTopY);
+    this.trackGraphics.lineTo(leftX, this.hitY);
+    this.trackGraphics.strokePath();
+
+    this.trackGraphics.beginPath();
+    this.trackGraphics.moveTo(rightX, this.trackTopY);
+    this.trackGraphics.lineTo(rightX, this.hitY);
+    this.trackGraphics.strokePath();
   }
 
-  private createHitLine() {
-    const width = this.cameras.main.width;
-    const hitY = this.hitY;
-
-    const g = this.add.graphics();
-    g.lineStyle(2, 0xFADCD9, 0.8);
-    g.beginPath();
-    g.moveTo(width * 0.16, hitY);
-    g.lineTo(width * 0.84, hitY);
-    g.strokePath();
+  private createTracks() {
+    this.trackGraphics = this.add.graphics();
+    this.trackGraphics.setDepth(16);
+    this.redrawTracks();
   }
 }

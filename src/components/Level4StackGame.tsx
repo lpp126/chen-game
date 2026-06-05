@@ -3,6 +3,7 @@ import Matter from 'matter-js';
 import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { playWrong } from '../utils/levelAudio';
+import { DESIGN_WIDTH, DESIGN_HEIGHT } from '../utils/levelTheme';
 
 type BlockType = 'rect' | 'square' | 'triangle' | 'cylinder' | 'arch' | 'cloud' | 'star';
 type Palette = 'rose' | 'sage' | 'mist' | 'sand' | 'sky';
@@ -29,8 +30,8 @@ type MatterBody = Matter.Body & {
   };
 };
 
-const VIEW_W = 750;
-const VIEW_H = 1330;
+const VIEW_W = DESIGN_WIDTH;
+const VIEW_H = DESIGN_HEIGHT;
 const STAGE_TOP = 112;
 const TABLE_TOP = 1060;
 const TABLE_BODY_H = 22;

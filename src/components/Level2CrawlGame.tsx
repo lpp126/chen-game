@@ -75,11 +75,10 @@ export const Level2CrawlGame: React.FC = () => {
   const [blockMark, setBlockMark] = useState<Point | null>(null);
   const [footprints, setFootprints] = useState<Array<Point & { id: number; ttl: number }>>([]);
   const [toast, setToast] = useState('');
-  const [standingMode, setStandingMode] = useState(false);
   const [showAdminTools, setShowAdminTools] = useState(false);
   const [startAt, setStartAt] = useState(0);
-  const [swipeStartY, setSwipeStartY] = useState<number | null>(null);
   const dragRef = useRef({ dragging: false, moved: false, sx: 0, sy: 0 });
+  const finishedRef = useRef(false);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const fitRef = useRef({ scale: 1, offsetX: 0, offsetY: 0 });
   const [fitScale, setFitScale] = useState(1);
@@ -103,7 +102,7 @@ export const Level2CrawlGame: React.FC = () => {
     setBlockMark(null);
     setFootprints([]);
     setToast('');
-    setStandingMode(false);
+    finishedRef.current = false;
   }, [isActive, runId]);
 
   useEffect(() => {
@@ -114,7 +113,7 @@ export const Level2CrawlGame: React.FC = () => {
     const updateFit = () => {
       const node = stageRef.current;
       if (!node) return;
-      // 用布局尺寸（750 稿内坐标），避免外层 transform: scale 导致内置/外置浏览器算出来不一致
+      // 用布局尺寸（750×1334 稿内坐标），避免外层 transform: scale 导致内置/外置浏览器算出来不一致
       const width = node.clientWidth;
       const height = node.clientHeight;
       if (width <= 0 || height <= 0) return;
@@ -147,7 +146,7 @@ export const Level2CrawlGame: React.FC = () => {
     let raf = 0;
     const step = () => {
       setPath((cur) => {
-        if (!cur.length || standingMode || gameplayPaused) return cur;
+        if (!cur.length || gameplayPaused) return cur;
         const next = cur[0];
         setPlayer((p) => {
           const dx = next.x - p.x;
@@ -165,7 +164,7 @@ export const Level2CrawlGame: React.FC = () => {
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [isActive, player.x, player.y, standingMode, gameplayPaused]);
+  }, [isActive, player.x, player.y, gameplayPaused]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -176,12 +175,20 @@ export const Level2CrawlGame: React.FC = () => {
     return () => window.clearInterval(t);
   }, [isActive, gameplayPaused]);
 
+  const doFinish = () => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    const elapsed = (Date.now() - startAt) / 1000;
+    const starsRank = elapsed <= 90 ? 3 : 2;
+    completeLevel({ stars: starsRank, orangesCollected: starsRank, orangeTotal: 3 });
+  };
+
   useEffect(() => {
-    if (!isActive) return;
-    if (!gameplayPaused && !standingMode && Math.hypot(player.x - exitPos.x, player.y - exitPos.y) < 36) {
-      setStandingMode(true);
+    if (!isActive || gameplayPaused) return;
+    if (Math.hypot(player.x - exitPos.x, player.y - exitPos.y) < 36) {
+      doFinish();
     }
-  }, [player, isActive, standingMode, exitPos.x, exitPos.y, gameplayPaused]);
+  }, [player, isActive, exitPos.x, exitPos.y, gameplayPaused, startAt]);
 
   const straightRoute = (from: Point, to: Point): Point[] | null => {
     const sx = Math.floor((from.x - OFFSET_X) / CELL);
@@ -247,12 +254,6 @@ export const Level2CrawlGame: React.FC = () => {
     setPath(route);
   };
 
-  const doFinish = () => {
-    const elapsed = (Date.now() - startAt) / 1000;
-    const starsRank = elapsed <= 90 ? 3 : 2;
-    completeLevel({ stars: starsRank, orangesCollected: starsRank, orangeTotal: 3 });
-  };
-
   const adminDirectPass = () => {
     completeLevel({ stars: 3, orangesCollected: 3, orangeTotal: 3 });
   };
@@ -298,13 +299,13 @@ export const Level2CrawlGame: React.FC = () => {
           dragRef.current = { dragging: true, moved: false, sx: e.clientX, sy: e.clientY };
         }}
         onPointerMove={(e) => {
-          if (!dragRef.current.dragging || standingMode || gameplayPaused) return;
+          if (!dragRef.current.dragging || gameplayPaused) return;
           const dx = e.clientX - dragRef.current.sx;
           const dy = e.clientY - dragRef.current.sy;
           if (Math.abs(dx) + Math.abs(dy) > 6) dragRef.current.moved = true;
         }}
         onPointerUp={(e) => {
-          if (!dragRef.current.moved && !standingMode && !gameplayPaused) handleTap(e.clientX, e.clientY);
+          if (!dragRef.current.moved && !gameplayPaused) handleTap(e.clientX, e.clientY);
           dragRef.current.dragging = false;
         }}
       >
@@ -350,31 +351,6 @@ export const Level2CrawlGame: React.FC = () => {
       {toast && (
         <div className="absolute left-1/2 -translate-x-1/2 z-[90] bg-black/60 text-white px-4 py-2 rounded-full text-sm" style={{ top: STAGE_TOP + 8 }}>
           {toast}
-        </div>
-      )}
-
-      {standingMode && !gameplayPaused && (
-        <div
-          className="absolute inset-0 z-40 bg-black/25 flex flex-col items-center justify-center"
-          onTouchStart={(e) => setSwipeStartY(e.touches[0].clientY)}
-          onTouchEnd={(e) => {
-            if (swipeStartY !== null && swipeStartY - e.changedTouches[0].clientY > 120) {
-              setToast('你学会走路了！');
-              setTimeout(doFinish, 800);
-            }
-            setSwipeStartY(null);
-          }}
-          onMouseDown={(e) => setSwipeStartY(e.clientY)}
-          onMouseUp={(e) => {
-            if (swipeStartY !== null && swipeStartY - e.clientY > 120) {
-              setToast('你学会走路了！');
-              setTimeout(doFinish, 800);
-            }
-            setSwipeStartY(null);
-          }}
-        >
-          <div className="text-6xl animate-bounce">⬆️</div>
-          <p className="mt-3 text-white font-bold">向上轻扫，完成站立</p>
         </div>
       )}
     </div>

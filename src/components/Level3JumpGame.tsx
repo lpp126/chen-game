@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
+import { DESIGN_WIDTH, DESIGN_HEIGHT } from '../utils/levelTheme';
 
 type PlatformType = 'basic' | 'cloud' | 'moving-horizontal' | 'moving-vertical' | 'swing';
 type Platform = {
@@ -24,8 +25,8 @@ type Collectible = {
   collected: boolean;
 };
 
-const VIEW_W = 750;
-const VIEW_H = 1330;
+const VIEW_W = DESIGN_WIDTH;
+const VIEW_H = DESIGN_HEIGHT;
 const WORLD_H = VIEW_H * 4;
 const BABY_W = 56;
 const BABY_H = 72;

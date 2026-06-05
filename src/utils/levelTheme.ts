@@ -1,3 +1,7 @@
+/** 全局设计稿尺寸（与 App 外层画布、Phaser 一致） */
+export const DESIGN_WIDTH = 750;
+export const DESIGN_HEIGHT = 1334;
+
 /** 蓝绿 cinematic 风格：与首页封面统一的天光、青绿、玻璃 HUD */
 export const FRESH = {
   bg: '#dcecf5',
@@ -39,6 +43,9 @@ export const freshPrimary =
 
 /** 统一 HUD：顶栏预留高度（供绝对定位关卡参考） */
 export const LEVEL_TOP_RESERVED = 108;
+
+/** 第 1 关 HUD 默认高度（React 实测后会覆盖） */
+export const LEVEL1_HUD_HEIGHT = 188;
 
 /** 毛玻璃面板（选关顶栏、游戏 TopBar 共用） */
 export const hudGlass =

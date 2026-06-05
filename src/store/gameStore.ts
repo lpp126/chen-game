@@ -111,6 +111,7 @@ interface GameState {
   currentLevelId: number;
   gameplayPaused: boolean;
   runId: number;
+  level1HudHeight: number;
   adminMode: boolean;
   showAdminLogin: boolean;
   adminExitCount: number;
@@ -134,6 +135,7 @@ interface GameState {
   startGame: () => void;
   restartCurrentLevel: () => void;
   setGameplayPaused: (paused: boolean) => void;
+  setLevel1HudHeight: (height: number) => void;
 
   showAdminLoginModal: (show: boolean) => void;
   loginAdmin: (username: string, password: string) => boolean;
@@ -177,6 +179,7 @@ export const useGameStore = create<GameState>((set, get) => {
     currentLevelId: 1,
     gameplayPaused: false,
     runId: 0,
+    level1HudHeight: 188,
     adminMode,
     showAdminLogin: false,
     adminExitCount: parsedSession.exitCount ?? 0,
@@ -210,6 +213,9 @@ export const useGameStore = create<GameState>((set, get) => {
       })),
     restartCurrentLevel: () => get().startGame(),
     setGameplayPaused: (paused) => set({ gameplayPaused: paused }),
+    setLevel1HudHeight: (height) => {
+      if (height > 0) set({ level1HudHeight: height });
+    },
 
     showAdminLoginModal: (show) => set({ showAdminLogin: show }),
     loginAdmin: (username, password) => {

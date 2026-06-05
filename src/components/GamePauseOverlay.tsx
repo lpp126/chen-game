@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useGameStore } from '../store/gameStore';
 import { PauseMenu } from './PauseMenu';
 
-/** 全局暂停层：固定在 750×1330 画布中央，24 关共用 */
+/** 全局暂停层：固定在 750×1334 画布中央，24 关共用 */
 export const GamePauseOverlay: React.FC = () => {
   const {
     status,
