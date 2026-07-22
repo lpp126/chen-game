@@ -1,13 +1,10 @@
-/** 各关共用 WebAudio 音效（无外部音频文件） */
-
-import { isMuted } from './audioManager';
+/** 各关共用 WebAudio 音效（无外部音频文件；不受菜单静音影响） */
 
 type Osc = OscillatorType;
 
 let sharedCtx: AudioContext | null = null;
 
 const getCtx = (): AudioContext | null => {
-  if (isMuted()) return null;
   const Ctx =
     window.AudioContext ||
     (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;

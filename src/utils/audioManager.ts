@@ -1,4 +1,4 @@
-/** 全局音频：菜单 BGM + 静音（挂到 window，避免 HMR 双轨） */
+/** 全局音频：仅控制菜单 BGM 静音（关卡音效 / 第 1 关 BGM 不受影响） */
 
 const MUTE_KEY = 'ctxiang_audio_muted';
 export const MENU_BGM_SRC = '/audio/menu-bgm.mp3';

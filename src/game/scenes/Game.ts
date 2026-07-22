@@ -1,7 +1,6 @@
 import { Scene } from 'phaser';
 import { useGameStore } from '../../store/gameStore';
 import { LEVEL1_HUD_HEIGHT } from '../../utils/levelTheme';
-import { isMuted } from '../../utils/audioManager';
 
 const BPM = 92; // 略加快节拍，缩短通关时间
 const BEAT_INTERVAL = 60000 / BPM; 
@@ -78,25 +77,14 @@ export class Game extends Scene {
     this.createBaby();
     this.applyPlayAreaLayout(useGameStore.getState().level1HudHeight || LEVEL1_HUD_HEIGHT);
 
-    // Setup audio
+    // 第 1 关节奏玩法依赖 BGM，不受全局静音影响（静音只关菜单 BGM / 其它关音效）
     if (this.cache.audio.exists('bgm-women')) {
       if (!this.sound.get('bgm-women')) {
-        this.bgm = this.sound.add('bgm-women', { loop: true, volume: isMuted() ? 0 : 0.7 });
+        this.bgm = this.sound.add('bgm-women', { loop: true, volume: 0.7 });
       } else {
         this.bgm = this.sound.get('bgm-women');
       }
     }
-
-    const onMute = (ev: Event) => {
-      const muted = Boolean((ev as CustomEvent<{ muted: boolean }>).detail?.muted);
-      if (this.bgm) {
-        (this.bgm as Phaser.Sound.WebAudioSound).setVolume(muted ? 0 : 0.7);
-      }
-    };
-    window.addEventListener('ctxiang-mute', onMute);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      window.removeEventListener('ctxiang-mute', onMute);
-    });
 
     // Input handlers
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -537,13 +525,12 @@ export class Game extends Scene {
     this.pauseTime = 0;
     this.pausedDuration = 0;
     
-    // Play BGM
-    const vol = isMuted() ? 0 : 0.7;
+    // Play BGM（节奏关必播，不吃静音）
     if (this.bgm && !this.bgm.isPlaying) {
-      this.bgm.play({ volume: vol });
+      this.bgm.play({ volume: 0.7 });
     } else if (this.bgm) {
       (this.bgm as Phaser.Sound.WebAudioSound).setSeek(0);
-      (this.bgm as Phaser.Sound.WebAudioSound).setVolume(vol);
+      (this.bgm as Phaser.Sound.WebAudioSound).setVolume(0.7);
     }
     
     // Clear old notes

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>24帧人生 · 陈添祥生日应援 · 官宣片</title>
+  <style>
+    :root {
+      --sky: #eaf4fc;
+      --mid: #cfe4f0;
+      --blue: #4a9fd8;
+      --teal: #3aab8e;
+      --ink: #0a1628;
+      --text: #1a3348;
+      --soft: #5a7a92;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      color: var(--text);
+      font-family: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", Georgia, serif;
+      overflow: hidden;
+    }
+    #stage {
+      position: relative;
+      width: min(100vw, calc(100vh * 16 / 9));
+      height: min(100vh, calc(100vw * 9 / 16));
+      margin: auto;
+      top: 50%;
+      transform: translateY(-50%);
+      background: linear-gradient(180deg, #eaf4fc 0%, #d6ecf8 45%, #b8d9ef 100%);
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+    }
+    .layer {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .layer img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scale(1.08);
+      filter: saturate(1.05) contrast(1.02);
+    }
+    .veil {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 28%, rgba(255,255,255,0.28), transparent 55%),
+        linear-gradient(180deg, rgba(10,22,40,0.15) 0%, rgba(10,22,40,0.45) 100%);
+    }
+    .copy {
+      position: absolute;
+      left: 7%;
+      right: 7%;
+      bottom: 14%;
+      z-index: 5;
+      color: #fff;
+      text-shadow: 0 8px 30px rgba(10,22,40,0.45);
+    }
+    .eyebrow {
+      font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+      letter-spacing: 0.42em;
+      font-size: clamp(11px, 1.4vw, 15px);
+      opacity: 0.88;
+      margin-bottom: 1.1em;
+      font-weight: 500;
+    }
+    .title {
+      font-size: clamp(42px, 7vw, 84px);
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      line-height: 1.05;
+      margin-bottom: 0.35em;
+    }
+    .sub {
+      font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+      font-size: clamp(15px, 2.1vw, 24px);
+      letter-spacing: 0.18em;
+      opacity: 0.92;
+      margin-bottom: 0.55em;
+    }
+    .line {
+      font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+      font-size: clamp(13px, 1.6vw, 18px);
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.88);
+    }
+    .brand-mark {
+      position: absolute;
+      top: 6%;
+      left: 7%;
+      z-index: 6;
+      font-family: "PingFang SC", sans-serif;
+      font-size: clamp(11px, 1.2vw, 13px);
+      letter-spacing: 0.35em;
+      color: rgba(255,255,255,0.78);
+      opacity: 0;
+    }
+    .progress {
+      position: absolute;
+      left: 7%;
+      right: 7%;
+      bottom: 5.5%;
+      height: 2px;
+      background: rgba(255,255,255,0.18);
+      z-index: 8;
+      overflow: hidden;
+      border-radius: 2px;
+    }
+    .progress > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--blue), var(--teal));
+    }
+    .start-gate {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 50% 40%, rgba(74,159,216,0.25), transparent 50%),
+        linear-gradient(180deg, #0a1628 0%, #123049 100%);
+      cursor: pointer;
+    }
+    .start-gate .panel {
+      text-align: center;
+      color: #fff;
+      padding: 2rem;
+    }
+    .start-gate h1 {
+      font-size: clamp(36px, 6vw, 64px);
+      letter-spacing: 0.16em;
+      margin-bottom: 0.6rem;
+    }
+    .start-gate p {
+      font-family: "PingFang SC", sans-serif;
+      letter-spacing: 0.28em;
+      opacity: 0.8;
+      margin-bottom: 1.8rem;
+      font-size: clamp(13px, 1.6vw, 16px);
+    }
+    .start-gate .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.95rem 2.4rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.55);
+      background: linear-gradient(90deg, #3a9fc4, #45b896);
+      color: #fff;
+      font-family: "PingFang SC", sans-serif;
+      font-size: clamp(15px, 1.8vw, 18px);
+      letter-spacing: 0.18em;
+      box-shadow: 0 10px 30px rgba(26,80,140,0.35);
+    }
+    .hint {
+      margin-top: 1.2rem;
+      font-family: "PingFang SC", sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      opacity: 0.55;
+    }
+    /* scene animation states driven by JS classes */
+    .show { animation: fadeIn 1.2s ease forwards; }
+    .kenburns img { animation: kenburns 8s ease-out forwards; }
+    .rise .copy { animation: riseIn 1.4s cubic-bezier(.2,.8,.2,1) 0.25s forwards; opacity: 0; }
+    .mark-on .brand-mark { animation: fadeIn 1s ease forwards; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(28px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes kenburns {
+      from { transform: scale(1.12) translate3d(0, 2%, 0); }
+      to { transform: scale(1.02) translate3d(0, -1%, 0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div class="start-gate" id="gate">
+      <div class="panel">
+        <h1>24帧人生</h1>
+        <p>陈添祥生日应援游戏 · 官宣片</p>
+        <div class="btn" id="playBtn">✦ 播放官宣 ✦</div>
+        <div class="hint">约 20 秒 · 可全屏后录屏导出视频</div>
+      </div>
+    </div>
+
+    <div class="layer kenburns" id="s1">
+      <img src="titlecard.png" alt="" />
+      <div class="veil"></div>
+      <div class="brand-mark">CTX BIRTHDAY TRIBUTE</div>
+      <div class="copy">
+        <div class="eyebrow">OFFICIAL ANNOUNCEMENT</div>
+        <div class="title">24帧人生</div>
+        <div class="sub">陈添祥生日应援游戏</div>
+        <div class="line">用二十四帧，写一段只属于他的平行世界</div>
+      </div>
+    </div>
+
+    <div class="layer kenburns" id="s2">
+      <img src="journey.png" alt="" />
+      <div class="veil"></div>
+      <div class="brand-mark">1 → 24</div>
+      <div class="copy">
+        <div class="eyebrow">A LIFE IN TWENTY-FOUR FRAMES</div>
+        <div class="title" style="font-size: clamp(28px, 4.8vw, 56px);">从 1 岁到 24 岁</div>
+        <div class="line">摇篮奶曲 · 同桌记忆 · 试镜倒计时 · 二十四烛光</div>
+      </div>
+    </div>
+
+    <div class="layer kenburns" id="s3">
+      <img src="poster.png" alt="" />
+      <div class="veil"></div>
+      <div class="brand-mark">HAPPY BIRTHDAY</div>
+      <div class="copy">
+        <div class="eyebrow">FOR CHEN TIANXIANG</div>
+        <div class="title" style="font-size: clamp(28px, 4.8vw, 56px);">生日快乐，陈添祥</div>
+        <div class="sub">点击进入平行世界</div>
+        <div class="line">chen-game.pages.dev</div>
+      </div>
+    </div>
+
+    <div class="progress"><i id="bar"></i></div>
+  </div>
+
+  <audio id="bgm" src="menu-bgm.mp3" preload="auto" loop></audio>
+
+  <script>
+    const TOTAL = 20000;
+    const scenes = [
+      { id: 's1', at: 0, hold: 6500 },
+      { id: 's2', at: 6200, hold: 7000 },
+      { id: 's3', at: 12800, hold: 7200 }
+    ];
+
+    const gate = document.getElementById('gate');
+    const bar = document.getElementById('bar');
+    const bgm = document.getElementById('bgm');
+    let raf = 0;
+    let start = 0;
+
+    function showScene(id) {
+      document.querySelectorAll('.layer').forEach((el) => {
+        el.classList.remove('show', 'rise', 'mark-on');
+        el.style.opacity = '0';
+      });
+      const el = document.getElementById(id);
+      el.style.opacity = '1';
+      el.classList.add('show', 'rise', 'mark-on');
+      // restart kenburns
+      const img = el.querySelector('img');
+      img.style.animation = 'none';
+      void img.offsetWidth;
+      img.style.animation = '';
+    }
+
+    function tick(now) {
+      if (!start) start = now;
+      const t = now - start;
+      const p = Math.min(1, t / TOTAL);
+      bar.style.width = (p * 100).toFixed(2) + '%';
+
+      let current = scenes[0].id;
+      for (const s of scenes) {
+        if (t >= s.at) current = s.id;
+      }
+      if (tick._cur !== current) {
+        tick._cur = current;
+        showScene(current);
+      }
+
+      if (t < TOTAL) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        bgm.pause();
+      }
+    }
+
+    async function play() {
+      gate.style.display = 'none';
+      try {
+        bgm.volume = 0.45;
+        await bgm.play();
+      } catch (_) {}
+      start = 0;
+      tick._cur = null;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(tick);
+    }
+
+    document.getElementById('playBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      play();
+    });
+    gate.addEventListener('click', play);
+
+    // preload
+    ['titlecard.png', 'journey.png', 'poster.png'].forEach((src) => {
+      const i = new Image();
+      i.src = src;
+    });
+  </script>
+</body>
+</html>
