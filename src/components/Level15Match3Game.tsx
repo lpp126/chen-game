@@ -6,30 +6,51 @@ import { playCorrect, playPop, playWin, playWrong } from '../utils/levelAudio';
 
 const TARGET_ROUNDS = 5;
 
-/** 常见 24 点搭配；正确解法中间结果均为整数，不含小数/分数 */
-const SOLVABLE_POOL: number[][] = [
-  [1, 2, 3, 4],
-  [1, 1, 2, 8],
-  [2, 2, 2, 6],
-  [2, 3, 4, 6],
-  [3, 3, 4, 8],
-  [4, 4, 4, 3],
-  [5, 5, 5, 5],
-  [6, 6, 6, 2],
-  [8, 8, 2, 2],
-  [1, 3, 4, 6],
-  [2, 4, 6, 8],
-  [3, 4, 5, 6],
-  [2, 2, 7, 8], // 7×2+8+2
-  [5, 5, 2, 4], // (5+5)×2+4
-  [1, 3, 6, 8], // 8×6÷(3-1)
-  [2, 4, 7, 8], // 8×(7-4)×(2÷2)
-  [1, 1, 5, 8], // 8×(5-(1+1))
-  [5, 5, 5, 1] // (5×5)-(5÷5)
+/** 中间步骤可全程整除的题 */
+const INTEGER_POOL: number[][] = [
+  [1, 2, 3, 4], // 1×2×3×4 = 24
+  [1, 1, 2, 8], // 8×(2+1×1) = 24
+  [2, 2, 2, 3], // (2+2)×(2×3) = 24
+  [2, 3, 4, 6], // 2+4+3×6 = 24
+  [3, 3, 4, 8], // (3+3)×(8-4) = 24
+  [4, 4, 4, 3], // 4×(4+3)-4 = 24
+  [5, 5, 5, 5], // 5×5-5÷5 = 24
+  [6, 6, 6, 2], // 6+6+6×2 = 24
+  [8, 8, 2, 2], // (8-2)×(8÷2) = 24
+  [2, 4, 6, 8], // 8×6÷(4÷2) = 24
+  [3, 4, 5, 6], // 6×(5+(3-4)) = 6×4 = 24
+  [2, 2, 7, 8], // 8×(7-(2+2)) = 8×3 = 24
+  [5, 5, 2, 4], // 4+2×(5+5) = 24
+  [1, 3, 6, 8], // 6×(8-(1+3)) = 6×4 = 24
+  [2, 4, 7, 8], // 4×((2×7)-8) = 4×6 = 24
+  [1, 1, 5, 8] // 8×(5-(1+1)) = 8×3 = 24
+];
+
+/** 需要分数 / 小数中间结果的题（仅作最后一小题） */
+const FRACTION_POOL: number[][] = [
+  [1, 3, 4, 6], // 6÷(1-3÷4) = 24【分数：3/4，1-3/4=1/4】
+  [5, 5, 5, 1], // 5×(5-1÷5) = 24【分数：1/5，5-1/5=24/5】
+  [1, 5, 5, 5], // 5×(5-1÷5) = 24【分数：1/5，5-1/5=24/5】
+  [1, 4, 5, 6], // 6÷((5÷4)-1) = 24【分数：5/4，5/4-1=1/4】
+  [1, 6, 6, 8] // 6÷(1-6÷8) = 24【分数：6/8=3/4，1-3/4=1/4】
 ];
 
 type Op = '+' | '-' | '×' | '÷';
 type Step = 'num1' | 'op' | 'num2';
+
+const EPS = 1e-9;
+const nearEq = (a: number, b: number) => Math.abs(a - b) < 1e-6;
+
+const gcd = (a: number, b: number): number => {
+  let x = Math.abs(Math.round(a));
+  let y = Math.abs(Math.round(b));
+  while (y) {
+    const t = y;
+    y = x % y;
+    x = t;
+  }
+  return x || 1;
+};
 
 const shuffleInPlace = <T,>(arr: T[]): T[] => {
   for (let i = arr.length - 1; i > 0; i -= 1) {
@@ -39,13 +60,15 @@ const shuffleInPlace = <T,>(arr: T[]): T[] => {
   return arr;
 };
 
-/** 无放回随机抽 TARGET_ROUNDS 组，避免两小关出一模一样的题 */
+/** 前 N-1 题从整除题库抽；最后一题从分数题库抽 */
 const buildRoundSet = (): number[][] => {
-  const pool = SOLVABLE_POOL.map((p) => [...p]);
-  shuffleInPlace(pool);
-  return pool.slice(0, TARGET_ROUNDS).map((nums) => shuffleInPlace([...nums]));
+  const ints = INTEGER_POOL.map((p) => [...p]);
+  shuffleInPlace(ints);
+  const fracs = FRACTION_POOL.map((p) => [...p]);
+  shuffleInPlace(fracs);
+  const rounds = [...ints.slice(0, TARGET_ROUNDS - 1), fracs[0]];
+  return rounds.map((nums) => shuffleInPlace([...nums]));
 };
-
 const calc = (a: number, b: number, op: Op): number | null => {
   switch (op) {
     case '+':
@@ -55,19 +78,33 @@ const calc = (a: number, b: number, op: Op): number | null => {
     case '×':
       return a * b;
     case '÷':
-      if (Math.abs(b) < 1e-9) return null;
-      {
-        const q = a / b;
-        // 只允许整除，避免出现小数/分数中间结果
-        if (!Number.isInteger(q)) return null;
-        return q;
-      }
+      if (Math.abs(b) < EPS) return null;
+      return a / b;
     default:
       return null;
   }
 };
 
-const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+/** 整数直接显示；能化简的分数优先；否则短小数 */
+const fmt = (n: number) => {
+  if (!Number.isFinite(n)) return '?';
+  if (nearEq(n, Math.round(n))) return String(Math.round(n));
+  for (let d = 2; d <= 24; d += 1) {
+    const num = Math.round(n * d);
+    if (nearEq(num / d, n)) {
+      const g = gcd(num, d);
+      const nn = num / g;
+      const dd = d / g;
+      if (dd === 1) return String(nn);
+      return `${nn}/${dd}`;
+    }
+  }
+  const s = n.toFixed(4).replace(/\.?0+$/, '');
+  return s;
+};
+
+/** 合并后收敛浮点误差，保留足够精度给后续运算 */
+const snap = (n: number) => Math.round(n * 1e6) / 1e6;
 
 export const Level15Match3Game: React.FC = () => {
   const { status, currentLevelId, gameplayPaused, setGameplayPaused, restartCurrentLevel, goLevelSelect, completeLevel, adminMode, runId } =
@@ -150,7 +187,7 @@ export const Level15Match3Game: React.FC = () => {
         resetRoundState(round);
         return;
       }
-      const rounded = Math.round(result * 1000) / 1000;
+      const rounded = snap(result);
       playPop();
       setExpr(`${fmt(a)} ${op} ${fmt(b)} = ${fmt(rounded)}`);
       const nextCards = cards.filter((_, idx) => idx !== firstIdx && idx !== i);
@@ -161,8 +198,7 @@ export const Level15Match3Game: React.FC = () => {
       setStep('num1');
 
       if (nextCards.length === 1) {
-        if (Math.abs(nextCards[0] - 24) < 0.01) {
-          playCorrect();
+        if (nearEq(nextCards[0], 24)) {          playCorrect();
           setMsg('等于 24！');
           if (round + 1 >= TARGET_ROUNDS) window.setTimeout(succeed, 450);
           else {
