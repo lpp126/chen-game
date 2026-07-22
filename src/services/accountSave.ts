@@ -13,6 +13,33 @@ export type SaveData = {
   unlockedLevels: number[];
   levels: Record<string, LevelRecord>;
   unlockedItems: string[];
+  /** 第 24 关结算：写给添添的祝福（同步到云端 birthday_message） */
+  birthdayWish?: string;
+};
+
+/** 祝福字数上限（按字/grapheme） */
+export const BIRTHDAY_WISH_MAX = 120;
+
+const clipGraphemes = (text: string, max: number): string => {
+  try {
+    const parts = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)];
+    return parts
+      .slice(0, max)
+      .map((p) => p.segment)
+      .join('');
+  } catch {
+    return Array.from(text).slice(0, max).join('');
+  }
+};
+
+/** 输入过程中：只裁长度，不 trim（避免空格被吃掉） */
+export const clampBirthdayWishInput = (raw: string): string =>
+  clipGraphemes(raw.replace(/\r\n/g, '\n'), BIRTHDAY_WISH_MAX);
+
+export const normalizeBirthdayWish = (raw: string): string => {
+  const trimmed = raw.replace(/\r\n/g, '\n').trim();
+  if (!trimmed) return '';
+  return clipGraphemes(trimmed, BIRTHDAY_WISH_MAX);
 };
 
 export type AccountSession = {
@@ -130,7 +157,16 @@ export const mergeSaveData = (a: SaveData, b: SaveData): SaveData => {
   );
   const totalOranges = Object.values(levels).reduce((sum, lv) => sum + (lv.stars ?? 0), 0);
   const unlockedItems = [...new Set([...(a.unlockedItems ?? []), ...(b.unlockedItems ?? [])])];
-  return { totalOranges, unlockedLevels: unlocked.length ? unlocked : [1], levels, unlockedItems };
+  const wishA = normalizeBirthdayWish(a.birthdayWish ?? '');
+  const wishB = normalizeBirthdayWish(b.birthdayWish ?? '');
+  const birthdayWish = wishA.length >= wishB.length ? wishA || undefined : wishB || undefined;
+  return {
+    totalOranges,
+    unlockedLevels: unlocked.length ? unlocked : [1],
+    levels,
+    unlockedItems,
+    ...(birthdayWish ? { birthdayWish } : {})
+  };
 };
 
 export type AccountActionResult =
@@ -245,3 +281,27 @@ export async function pullAccountSave(): Promise<SaveData | null> {
 export const logoutAccountSession = () => {
   saveAccountSession(null);
 };
+
+export type BirthdayWishItem = {
+  nickname: string;
+  message: string;
+  updatedAt?: string;
+};
+
+/** 留言墙：拉取云端已保存祝福（公开 RPC，不含敏感信息） */
+export async function fetchBirthdayWishes(): Promise<BirthdayWishItem[]> {
+  const client = getSupabase();
+  if (!client) return [];
+  const { data, error } = await client.rpc('list_birthday_wishes');
+  if (error || !data) return [];
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((row) => {
+      const r = row as { nickname?: string; message?: string; updatedAt?: string };
+      const nickname = typeof r.nickname === 'string' ? r.nickname.trim() : '';
+      const message = typeof r.message === 'string' ? r.message.trim() : '';
+      if (!nickname || !message) return null;
+      return { nickname, message, updatedAt: r.updatedAt };
+    })
+    .filter((x): x is BirthdayWishItem => Boolean(x));
+}

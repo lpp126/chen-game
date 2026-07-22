@@ -10,7 +10,8 @@ const LABELED: Record<number, string> = {
   9: '/images/第九关结算.webp',
   13: '/images/第13关结算.webp',
   22: '/images/第22关结算.webp',
-  23: '/images/第23关结算.webp'
+  23: '/images/第23关结算.webp',
+  24: '/images/第24关结算.png'
 };
 
 /**

@@ -6,6 +6,7 @@ import { FRESH, hudGlass, mobileContentInset, mobileTextMin, mobileTextTitle } f
 import { MuteButton } from './MuteButton';
 import { unlockAudio } from '../utils/audioManager';
 import { AccountSyncModal } from './AccountSyncModal';
+import { WishWallModal } from './WishWallModal';
 
 const DEV_UNLOCK_ALL_LEVELS = false;
 
@@ -34,6 +35,7 @@ export const LevelSelectScreen: React.FC = () => {
     syncAdminToPlayer
   } = useGameStore();
   const [accountOpen, setAccountOpen] = useState(false);
+  const [wishWallOpen, setWishWallOpen] = useState(false);
 
   useEffect(() => {
     if (status === 'level_select' && !accountNickname && !adminMode) {
@@ -77,6 +79,18 @@ export const LevelSelectScreen: React.FC = () => {
               </svg>
             </button>
             <div className="flex items-center gap-1.5 shrink-0 z-10">
+              <button
+                type="button"
+                onClick={() => setWishWallOpen(true)}
+                className="px-2.5 h-9 rounded-lg border border-white/85 font-bold shadow-sm active:scale-95 leading-none text-white"
+                style={{
+                  background: 'linear-gradient(135deg, #ffb347, #ff8c42)',
+                  fontSize: 24
+                }}
+                title="留言墙"
+              >
+                💌留言墙
+              </button>
               {accountNickname && (
                 <button
                   type="button"
@@ -219,6 +233,7 @@ export const LevelSelectScreen: React.FC = () => {
       )}
 
       <AccountSyncModal open={accountOpen} detailsOnly onClose={() => setAccountOpen(false)} />
+      <WishWallModal open={wishWallOpen} onClose={() => setWishWallOpen(false)} />
     </div>
   );
 };

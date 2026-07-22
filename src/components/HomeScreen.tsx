@@ -3,6 +3,7 @@ import { useGameStore } from '../store/gameStore';
 import { DESIGN_HEIGHT, FRESH } from '../utils/levelTheme';
 import { unlockAudio } from '../utils/audioManager';
 import { AccountSyncModal } from './AccountSyncModal';
+import { WishWallModal } from './WishWallModal';
 
 const HOME_COVER = '/images/首页封面.webp';
 
@@ -17,6 +18,7 @@ export const HomeScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loginOpen, setLoginOpen] = useState(false);
+  const [wishWallOpen, setWishWallOpen] = useState(false);
 
   if (status !== 'home') return null;
 
@@ -64,6 +66,21 @@ export const HomeScreen: React.FC = () => {
         className="absolute inset-0 w-full h-full pointer-events-none select-none"
         draggable={false}
       />
+
+      <button
+        type="button"
+        onClick={() => setWishWallOpen(true)}
+        className="absolute top-4 right-3.5 z-30 flex items-center gap-1.5 px-3 h-9 rounded-full border border-white/70 text-[22px] font-bold text-white active:scale-95 transition-transform"
+        style={{
+          background: 'linear-gradient(135deg, rgba(255,179,71,0.92), rgba(255,140,66,0.92))',
+          boxShadow: '0 5px 14px rgba(255,140,66,0.32)'
+        }}
+      >
+        <span className="text-[26px]" aria-hidden>
+          💌
+        </span>
+        留言墙
+      </button>
 
       <button
         type="button"
@@ -137,6 +154,7 @@ export const HomeScreen: React.FC = () => {
       )}
 
       <AccountSyncModal open={loginOpen} required onClose={() => setLoginOpen(false)} />
+      <WishWallModal open={wishWallOpen} onClose={() => setWishWallOpen(false)} />
     </div>
   );
 };

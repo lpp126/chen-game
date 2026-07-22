@@ -38,6 +38,7 @@ import { GamePauseOverlay } from './components/GamePauseOverlay';
 import { useGameStore } from './store/gameStore';
 import { FRESH, DESIGN_WIDTH, DESIGN_HEIGHT } from './utils/levelTheme';
 import { setMenuBgmActive, unlockAudio } from './utils/audioManager';
+import { setLevel24BgmActive } from './utils/level24Bgm';
 
 export default function App() {
   const initialized = useRef(false);
@@ -92,6 +93,13 @@ export default function App() {
     const menuActive = status === 'home' || status === 'level_select';
     setMenuBgmActive(menuActive);
   }, [status]);
+
+  // 第 24 关：规则页无 BGM；游戏界面与结算页循环播放生日快乐曲
+  useEffect(() => {
+    const active =
+      currentLevelId === 24 && (status === 'playing' || status === 'gameover');
+    setLevel24BgmActive(active);
+  }, [status, currentLevelId]);
 
   useEffect(() => {
     const unlock = () => unlockAudio();

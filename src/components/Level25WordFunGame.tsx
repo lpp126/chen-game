@@ -63,29 +63,39 @@ const EMOJI_POOL: EmojiPuzzle[] = [
   { kind: 'emoji', id: 107, clues: ['🔪', '⛰️', '🔥', '🌊'], answer: '刀山火海' },
   { kind: 'emoji', id: 108, clues: ['🎒', '🪞', '🍐', '🍌'], answer: '背井离乡' },
   { kind: 'emoji', id: 109, clues: ['🍬', '🍬', '🪡', '🪡'], answer: '堂堂正正' },
-  { kind: 'emoji', id: 110, clues: ['✋', '🤐', '🚶', '🍼'], answer: '守口如瓶' },
+  { kind: 'emoji', id: 110, clues: ['✋', '👄', '🚶', '🍼'], answer: '守口如瓶' },
   { kind: 'emoji', id: 111, clues: ['⬅️', '🤔', '➡️', '🤔'], answer: '左思右想' },
-  { kind: 'emoji', id: 112, clues: ['🍧', '🍧', '✋', '🪦'], answer: '绵绵不绝' },
-  { kind: 'emoji', id: 113, clues: ['➖', '🀄', '📖', '🎺'], answer: '横七竖八' },
-  { kind: 'emoji', id: 114, clues: ['✋', '🥬', '😋', '🌊'], answer: '大材小用' },
+  { kind: 'emoji', id: 112, clues: ['🍜', '🍜', '✋', '🪦'], answer: '绵绵不绝' },
+  { kind: 'emoji', id: 113, clues: ['➖', '7️⃣', '📖', '8️⃣'], answer: '横七竖八' },
+  { kind: 'emoji', id: 114, clues: ['🔨', '🥬', '😋', '🌊'], answer: '大材小用' },
   { kind: 'emoji', id: 115, clues: ['🪞', '🧎', '🎫', '🐘'], answer: '金桂飘香' },
-  { kind: 'emoji', id: 116, clues: ['🐦', '👄', '😋', '💡'], answer: '鸟语蝉鸣' },
+  { kind: 'emoji', id: 116, clues: ['🖐🏻', '🔒', '🦴', '🐔'], answer: '无所顾忌' },
   { kind: 'emoji', id: 117, clues: ['👄', '🧱', '🐍', '🚶'], answer: '唇枪舌战' },
   { kind: 'emoji', id: 201, clues: ['🍏', '🌹', '🐷', '🐴'], answer: '青梅竹马' },
   { kind: 'emoji', id: 202, clues: ['😄', '👆', '🌹', '🔥'], answer: '喜上眉梢' },
   { kind: 'emoji', id: 203, clues: ['🐔', '✈️', '🥚', '🔨'], answer: '鸡飞蛋打' },
-  { kind: 'emoji', id: 204, clues: ['🎈', '👄', '👈', '🐍'], answer: '七嘴八舌' },
+  { kind: 'emoji', id: 204, clues: ['🎈', '👄', '8️⃣', '🐍'], answer: '七嘴八舌' },
   { kind: 'emoji', id: 205, clues: ['✅', '🐂', '🤘', '🎹'], answer: '对牛弹琴' },
   { kind: 'emoji', id: 206, clues: ['♨️', '♨️', '☀️', '👆'], answer: '蒸蒸日上' },
   { kind: 'emoji', id: 207, clues: ['🧊', '🧊', '🈶', '🎁'], answer: '彬彬有礼' },
   { kind: 'emoji', id: 208, clues: ['🚶', '🐴', '👀', '🌸'], answer: '走马观花' },
   { kind: 'emoji', id: 209, clues: ['🐟', '🎵', '♻️', '🍚'], answer: '余音绕梁' },
-  { kind: 'emoji', id: 210, clues: ['🎨', '🐍', '☁️', '🦶'], answer: '画蛇添足' },
+  { kind: 'emoji', id: 210, clues: ['🚶', '🐏', '🐴', '🍅'], answer: '人仰马翻' },
   { kind: 'emoji', id: 211, clues: ['🐦', '🌧️', '🌼', '🤔'], answer: '鸟语花香' },
   { kind: 'emoji', id: 212, clues: ['🐷', '☀️', '💎', '🎈'], answer: '珠光宝气' },
   { kind: 'emoji', id: 213, clues: ['👨', '👩', '👵', '👦'], answer: '男女老少' },
   { kind: 'emoji', id: 214, clues: ['🐶', '🐔', '🪂', '🧱'], answer: '狗急跳墙' }
 ];
+
+/** 阶段二压轴：固定最后一题，不进随机池 */
+const EMOJI_FINALE: EmojiPuzzle = {
+  kind: 'emoji',
+  id: 900,
+  clues: ['🍊', '👶🏻', '💪', '🏊', '⭕', '❤️', '🍊', '🍬', '🐘'],
+  answer: '橙子粒永远爱陈添祥'
+};
+
+const buildEmojiDeck = (): EmojiPuzzle[] => [...shufflePick(EMOJI_POOL, ROUND_COUNT), EMOJI_FINALE];
 
 const ROUND_FONT =
   '"Rounded Mplus 1c", "Hiragino Maru Gothic ProN", "Yu Gothic", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif';
@@ -160,7 +170,7 @@ export const Level25WordFunGame: React.FC = () => {
   }, []);
 
   const enterStage2 = useCallback(() => {
-    const next = shufflePick(EMOJI_POOL, ROUND_COUNT);
+    const next = buildEmojiDeck();
     deckRef.current = next;
     stageRef.current = 2;
     indexRef.current = 0;
@@ -263,8 +273,9 @@ export const Level25WordFunGame: React.FC = () => {
   if (!isActive || !puzzle) return null;
 
   const isPic = puzzle.kind === 'pic';
-  const title = stage === 1 ? '🐑 梗图夜话' : '🧩 emoji成语';
-  const hint = stage === 1 ? '阶段一 · 上下对照猜谐音梗' : '阶段二 · 四个符号猜四字成语';
+  const title = '🐑 梗图夜话';
+  const hint = stage === 1 ? '上下对照猜谐音梗' : 'emoji猜词';
+  const clueCols = isPic ? 4 : puzzle.clues.length <= 4 ? 4 : 3;
 
   return (
     <div
@@ -346,7 +357,10 @@ export const Level25WordFunGame: React.FC = () => {
             </>
           ) : (
             <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-6 px-1">
-              <div className="w-full grid grid-cols-4 gap-2.5">
+              <div
+                className="w-full grid gap-2.5"
+                style={{ gridTemplateColumns: `repeat(${clueCols}, minmax(0, 1fr))` }}
+              >
                 {puzzle.clues.map((c, i) => (
                   <div
                     key={`${puzzle.id}-${i}`}
@@ -355,7 +369,12 @@ export const Level25WordFunGame: React.FC = () => {
                     <span
                       className="leading-none select-none"
                       style={{
-                        fontSize: c.length === 1 && /[\u4e00-\u9fff]/.test(c) ? 42 : 48,
+                        fontSize:
+                          puzzle.clues.length > 6
+                            ? 36
+                            : c.length === 1 && /[\u4e00-\u9fff]/.test(c)
+                              ? 42
+                              : 48,
                         fontWeight: 800
                       }}
                     >
@@ -365,10 +384,12 @@ export const Level25WordFunGame: React.FC = () => {
                 ))}
               </div>
               <p className="text-[26px] font-bold text-black tracking-wide text-center">
-                这是{blanks(4)}
-                <span className="text-[18px] font-bold text-[#444]">（4个字）</span>
+                这是{blanks(answerLen)}
+                <span className="text-[18px] font-bold text-[#444]">（{answerLen}个字）</span>
               </p>
-              <p className="text-sm font-semibold text-[#6a7a8a]">看符号谐音/意象，猜出成语</p>
+              <p className="text-sm font-semibold text-[#6a7a8a]">
+                {puzzle.id === EMOJI_FINALE.id ? '看符号谐音/意象，猜出完整句子' : '看符号谐音/意象，猜出成语'}
+              </p>
             </div>
           )}
         </div>
@@ -410,7 +431,7 @@ export const Level25WordFunGame: React.FC = () => {
               阶段二开启
             </p>
             <p className="mt-1 text-sm" style={{ color: FRESH.textMuted }}>
-              四个 emoji，猜四字成语
+              emoji猜词 · 最后一题有惊喜
             </p>
           </div>
         </div>

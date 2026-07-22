@@ -39,5 +39,5 @@ export const LEVELS: LevelConfig[] = [
   { levelId: 21, age: 21, title: '夜灯数独', theme: '四格逻辑填数', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
   { levelId: 22, age: 23, title: '试镜倒计时', theme: '记忆序列复现', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
   { levelId: 23, age: 22, title: '色差分毫', theme: '观察力 · 递增网格', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
-  { levelId: 24, age: 24, title: '二十四烛光', theme: '见缝插烛 · 庆生', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
+  { levelId: 24, age: 24, title: '二十四烛光', theme: '见缝插烛 · 庆生', coverImage: defaultCover, bgm: 'bgm-happybirthday', orangeSpawnConfig: { min: 5, max: 8 } },
 ];

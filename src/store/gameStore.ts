@@ -6,6 +6,7 @@ import {
   loginOrRegisterAccount,
   logoutAccountSession,
   mergeSaveData,
+  normalizeBirthdayWish,
   pullAccountSave,
   pushAccountSave,
   slotForNickname,
@@ -33,6 +34,7 @@ export interface SaveData {
   unlockedLevels: number[];
   levels: Record<string, LevelRecord>;
   unlockedItems: string[];
+  birthdayWish?: string;
 }
 
 const PLAYER_KEY_BASE = 'ctxiang_player_data';
@@ -92,11 +94,13 @@ const normalizeSaveDataToStarOranges = (input: SaveData): SaveData => {
     };
     totalStarOranges += starValue;
   });
+  const birthdayWish = normalizeBirthdayWish(input.birthdayWish ?? '');
   return {
     totalOranges: totalStarOranges,
     unlockedLevels: Array.isArray(input.unlockedLevels) && input.unlockedLevels.length > 0 ? input.unlockedLevels : [1],
     levels: normalizedLevels,
-    unlockedItems: Array.isArray(input.unlockedItems) ? input.unlockedItems : []
+    unlockedItems: Array.isArray(input.unlockedItems) ? input.unlockedItems : [],
+    ...(birthdayWish ? { birthdayWish } : {})
   };
 };
 
@@ -167,6 +171,8 @@ interface GameState {
 
   loginWithNickname: (nickname: string, pin: string) => Promise<{ ok: boolean; message: string }>;
   logoutNickname: () => void;
+  /** 第 24 关结算祝福：本机保存并尽量同步云端 */
+  saveBirthdayWish: (text: string) => Promise<{ ok: boolean; message: string; syncedCloud: boolean }>;
 }
 
 export const useGameStore = create<GameState>((set, get) => {
@@ -429,6 +435,30 @@ export const useGameStore = create<GameState>((set, get) => {
         status: 'home',
         gameplayPaused: false
       });
+    },
+
+    saveBirthdayWish: async (text) => {
+      const wish = normalizeBirthdayWish(text);
+      if (!wish) {
+        return { ok: false, message: '先写一句想对添添说的话吧', syncedCloud: false };
+      }
+      const state = get();
+      const nextData: SaveData = { ...state.saveData, birthdayWish: wish };
+      persistCurrentMode({ ...state, saveData: nextData } as GameState, nextData);
+      set({ saveData: nextData });
+
+      if (state.adminMode) {
+        return { ok: true, message: '已保存（管理员模式，未上云）', syncedCloud: false };
+      }
+      if (!state.accountNickname) {
+        return { ok: true, message: '已保存在本机；登录账号后会同步到云端', syncedCloud: false };
+      }
+      try {
+        await pushAccountSave(nextData as AccountSaveData);
+        return { ok: true, message: '已同步到云端祝福墙', syncedCloud: true };
+      } catch {
+        return { ok: true, message: '已保存在本机，云端稍后重试', syncedCloud: false };
+      }
     }
   };
 });
