@@ -4,6 +4,7 @@ import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { DESIGN_WIDTH, DESIGN_HEIGHT, FRESH } from '../utils/levelTheme';
 import { playCorrect, playFlip, playPop, playWin } from '../utils/levelAudio';
+import { useLevelAssetsGate } from '../hooks/useLevelAssetsGate';
 
 type Rotation = 0 | 90 | 180 | 270;
 
@@ -67,6 +68,7 @@ export const Level5PuzzleGame: React.FC = () => {
     testCompleteLevel
   } = useGameStore();
   const isActive = status === 'playing' && currentLevelId === 5;
+  const assetsReady = useLevelAssetsGate(5, isActive, runId);
 
   const [pieces, setPieces] = useState<PieceData[]>([]);
   const [slots, setSlots] = useState<(string | null)[]>(() => Array(TOTAL).fill(null));
@@ -291,7 +293,7 @@ export const Level5PuzzleGame: React.FC = () => {
     </div>
   );
 
-  if (!isActive) return null;
+  if (!isActive || !assetsReady) return null;
 
   const dragPiece = drag ? pieces.find((p) => p.id === drag.pieceId) : null;
   const dragSize = CELL - 8;

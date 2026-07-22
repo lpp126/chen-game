@@ -203,7 +203,6 @@ export const GameOver: React.FC = () => {
               alt={`第${currentLevelId}关结算`}
               className="w-44 h-44 object-contain drop-shadow-md"
               style={isBirthdayClear ? { animation: 'bday-glow 2.4s ease-in-out infinite' } : undefined}
-              loading="lazy"
               decoding="async"
             />
           ) : (

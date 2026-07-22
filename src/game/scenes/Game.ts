@@ -1,6 +1,6 @@
 import { Scene } from 'phaser';
 import { useGameStore } from '../../store/gameStore';
-import { clearAssetLoad, reportAssetLoad } from '../../components/AssetLoadOverlay';
+import { prefetchLevel1Bgm } from '../../utils/level1Bgm';
 import { LEVEL1_HUD_HEIGHT } from '../../utils/levelTheme';
 
 const BPM = 92; // 略加快节拍，缩短通关时间
@@ -510,8 +510,7 @@ export class Game extends Scene {
   }
 
   private ensureLevel1Bgm(thenPlay: boolean) {
-    const bind = () => {
-      clearAssetLoad();
+    const bindAndPlay = () => {
       if (!this.sound.get('bgm-women')) {
         this.bgm = this.sound.add('bgm-women', { loop: true, volume: 0.7 });
       } else {
@@ -527,44 +526,55 @@ export class Game extends Scene {
     };
 
     if (this.cache.audio.exists('bgm-women')) {
-      bind();
-      return;
+      bindAndPlay();
+      return Promise.resolve();
     }
 
-    reportAssetLoad('关卡音乐', 0.02);
-    this.load.audio('bgm-women', '/audio/level1-bgm.mp3');
-    this.load.on(Phaser.Loader.Events.PROGRESS, (value: number) => {
-      reportAssetLoad('关卡音乐', Math.max(0.02, value));
-    });
-    this.load.once(Phaser.Loader.Events.COMPLETE, () => {
-      this.load.off(Phaser.Loader.Events.PROGRESS);
-      bind();
-    });
-    this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
-      this.load.off(Phaser.Loader.Events.PROGRESS);
-      clearAssetLoad();
-    });
-    this.load.start();
+    // 先走优先下载门禁，再交给 Phaser 挂载（blob 通常已在缓存）
+    return prefetchLevel1Bgm().then(
+      (url) =>
+        new Promise<void>((resolve) => {
+          if (this.cache.audio.exists('bgm-women')) {
+            bindAndPlay();
+            resolve();
+            return;
+          }
+          this.load.audio('bgm-women', url);
+          this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+            bindAndPlay();
+            resolve();
+          });
+          this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => resolve());
+          this.load.start();
+        })
+    );
   }
 
   private startGame(runId: number) {
-    this.isPlaying = true;
+    // 资源未就绪前不进入可玩状态，避免空白开局
+    this.isPlaying = false;
     this.isPaused = false;
     this.runId = runId;
-    this.generateLevelData();
-    // 开局喘息：推迟游戏时钟，而非推迟奶滴生成（后者会导致一出现就在底部）
-    this.startTime = this.time.now + START_GRACE_MS;
-    this.pauseTime = 0;
-    this.pausedDuration = 0;
-    
-    // Play BGM（节奏关必播，不吃静音；首次进入再拉音频）
-    this.ensureLevel1Bgm(true);
-    
-    // Clear old notes
-    this.notes.forEach(n => { if (n.sprite) n.sprite.destroy(); });
+    this.notes.forEach((n) => {
+      if (n.sprite) n.sprite.destroy();
+    });
     this.babyFace.setText('-_-');
     this.babyFace.setColor('#4A4443');
-    console.log('Game Started');
+
+    void this.ensureLevel1Bgm(true).then(() => {
+      const state = useGameStore.getState();
+      if (state.status !== 'playing' || state.currentLevelId !== 1 || state.runId !== runId) {
+        return;
+      }
+      this.isPlaying = true;
+      this.isPaused = false;
+      this.generateLevelData();
+      this.startTime = this.time.now + START_GRACE_MS;
+      this.pauseTime = 0;
+      this.pausedDuration = 0;
+      if (state.gameplayPaused) this.pauseGame();
+      console.log('Game Started');
+    });
   }
 
   private stopBgm() {

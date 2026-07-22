@@ -3,6 +3,7 @@ import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
 import { playBridge, playCorrect, playSplash, playWin, playWrong } from '../utils/levelAudio';
+import { useLevelAssetsGate } from '../hooks/useLevelAssetsGate';
 import { Level25LinePhysicsGame } from './Level25LinePhysicsGame';
 
 /** 桥墩由粗到细；河宽逐渐变大 */
@@ -51,6 +52,7 @@ const Level13BridgeStage: React.FC<BridgeProps> = ({ onBridgeClear }) => {
     runId
   } = useGameStore();
   const isActive = status === 'playing' && currentLevelId === 13;
+  const assetsReady = useLevelAssetsGate(13, isActive, runId);
 
   const [curIdx, setCurIdx] = useState(0);
   const [plats, setPlats] = useState<Plat[]>(() => buildWorld());
@@ -258,7 +260,7 @@ const Level13BridgeStage: React.FC<BridgeProps> = ({ onBridgeClear }) => {
     rafRef.current = requestAnimationFrame(fallTick);
   };
 
-  if (!isActive) return null;
+  if (!isActive || !assetsReady) return null;
 
   const cur = plats[curIdx];
   const pivotX = cur ? cur.x + cur.w : 0;

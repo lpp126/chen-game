@@ -12,6 +12,9 @@ import {
   slotForNickname,
   type SaveData as AccountSaveData
 } from '../services/accountSave';
+import { prefetchLevel1Bgm } from '../utils/level1Bgm';
+import { prefetchLevel24Bgm } from '../utils/level24Bgm';
+import { prefetchLevelAssets } from '../utils/levelAssetCache';
 
 export type PageStatus = 'home' | 'level_select' | 'level_intro' | 'start' | 'playing' | 'gameover' | 'orange_shop';
 
@@ -224,19 +227,38 @@ export const useGameStore = create<GameState>((set, get) => {
     goOrangeShop: () => set({ status: 'orange_shop', gameplayPaused: false }),
     enterLevelStart: (levelId) => set({ status: 'level_intro', currentLevelId: levelId, gameplayPaused: false }),
     proceedToStartScreen: () => set({ status: 'start', gameplayPaused: false }),
-    startGame: () =>
-      set((state) => ({
-        status: 'playing',
-        runId: state.runId + 1,
-        fullness: 0,
-        notesCollected: 0,
-        combo: 0,
-        stars: 0,
-        stats: emptyStats(),
-        pinkBubbles: 0,
-        placeholderProgress: 0,
-        gameplayPaused: false
-      })),
+    startGame: () => {
+      const levelId = get().currentLevelId;
+      const fromStatus = get().status;
+      void (async () => {
+        try {
+          if (levelId === 1) await prefetchLevel1Bgm();
+          if (levelId === 24) await prefetchLevel24Bgm();
+          await prefetchLevelAssets(levelId);
+        } catch {
+          /* ignore */
+        }
+        const state = get();
+        if (state.currentLevelId !== levelId) return;
+        // 允许从规则页开始 / 结算再玩 / 局内重启
+        if (state.status !== 'start' && state.status !== 'gameover' && state.status !== 'playing') {
+          // 若加载期间仍停在发起时的状态也放行（避免竞态）
+          if (state.status !== fromStatus) return;
+        }
+        set({
+          status: 'playing',
+          runId: state.runId + 1,
+          fullness: 0,
+          notesCollected: 0,
+          combo: 0,
+          stars: 0,
+          stats: emptyStats(),
+          pinkBubbles: 0,
+          placeholderProgress: 0,
+          gameplayPaused: false
+        });
+      })();
+    },
     restartCurrentLevel: () => get().startGame(),
     setGameplayPaused: (paused) => set({ gameplayPaused: paused }),
     setLevel1HudHeight: (height) => {

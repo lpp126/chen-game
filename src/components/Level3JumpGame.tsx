@@ -3,6 +3,7 @@ import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { DESIGN_WIDTH, DESIGN_HEIGHT } from '../utils/levelTheme';
 import { playCollect, playJump, playWin } from '../utils/levelAudio';
+import { useLevelAssetsGate } from '../hooks/useLevelAssetsGate';
 
 type PlatformType = 'basic' | 'cloud' | 'moving-horizontal' | 'moving-vertical' | 'swing';
 type Platform = {
@@ -99,9 +100,11 @@ export const Level3JumpGame: React.FC = () => {
     goLevelSelect,
     completeLevel,
     adminMode,
-    testCompleteLevel
+    testCompleteLevel,
+    runId
   } = useGameStore();
   const isActive = status === 'playing' && currentLevelId === 3;
+  const assetsReady = useLevelAssetsGate(3, isActive, runId);
 
   const [player, setPlayer] = useState(() => ({ x: START_POS.x, y: START_POS.y, vx: 0, vy: 0 }));
   const [cameraY, setCameraY] = useState(() => Math.min(Math.max(START_POS.y - PLAY_VIEW_H * CAMERA_PLAYER_RATIO, 0), WORLD_H - PLAY_VIEW_H));
@@ -355,7 +358,7 @@ export const Level3JumpGame: React.FC = () => {
     stars
   ]);
 
-  if (!isActive) return null;
+  if (!isActive || !assetsReady) return null;
 
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto overflow-hidden bg-[#dceeff]">

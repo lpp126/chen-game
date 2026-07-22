@@ -3,6 +3,7 @@ import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
 import { playCandle, playCorrect, playWhoosh, playWin, playWrong } from '../utils/levelAudio';
+import { isLevel24BgmReady, prefetchLevel24Bgm } from '../utils/level24Bgm';
 
 /** 第4小关不减数量：降速 + 更松碰撞 + 越插越慢（不低于 minSpeed） */
 const STAGES = [
@@ -78,6 +79,7 @@ export const Level24BirthdayGame: React.FC = () => {
     runId
   } = useGameStore();
   const isActive = status === 'playing' && currentLevelId === 24;
+  const [assetsReady, setAssetsReady] = useState(() => isLevel24BgmReady());
 
   const [stageIdx, setStageIdx] = useState(0);
   const [placed, setPlaced] = useState<number[]>([]);
@@ -126,11 +128,26 @@ export const Level24BirthdayGame: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    pausedRef.current = gameplayPaused;
-  }, [gameplayPaused]);
+    pausedRef.current = gameplayPaused || !assetsReady;
+  }, [gameplayPaused, assetsReady]);
 
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive) {
+      setAssetsReady(isLevel24BgmReady());
+      return;
+    }
+    let cancelled = false;
+    setAssetsReady(false);
+    void prefetchLevel24Bgm().then(() => {
+      if (!cancelled) setAssetsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isActive, runId]);
+
+  useEffect(() => {
+    if (!isActive || !assetsReady) return;
     endedRef.current = false;
     setMisses(0);
     setEnded(false);
@@ -154,10 +171,10 @@ export const Level24BirthdayGame: React.FC = () => {
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [isActive, runId, resetStage]);
+  }, [isActive, assetsReady, runId, resetStage]);
 
   const fire = () => {
-    if (!isActive || gameplayPaused || ended || failed || flyingRef.current) return;
+    if (!isActive || !assetsReady || gameplayPaused || ended || failed || flyingRef.current) return;
     if (remainingRef.current <= 0) return;
 
     // 点击瞬间锁定角度，避免飞行延迟导致偏差
@@ -201,7 +218,7 @@ export const Level24BirthdayGame: React.FC = () => {
     }, 180);
   };
 
-  if (!isActive) return null;
+  if (!isActive || !assetsReady) return null;
 
   const cx = SIZE / 2;
   const cy = SIZE / 2;

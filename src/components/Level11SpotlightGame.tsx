@@ -3,6 +3,7 @@ import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
 import { playCorrect, playSoftClick, playSparkle, playWin, playWrong } from '../utils/levelAudio';
+import { useLevelAssetsGate } from '../hooks/useLevelAssetsGate';
 
 type Hotspot = { x: number; y: number; w: number; h: number };
 
@@ -84,6 +85,7 @@ export const Level11SpotlightGame: React.FC = () => {
     runId
   } = useGameStore();
   const isActive = status === 'playing' && currentLevelId === 11;
+  const assetsReady = useLevelAssetsGate(11, isActive, runId);
 
   const [stageIdx, setStageIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(STAGE_TIME);
@@ -186,7 +188,7 @@ export const Level11SpotlightGame: React.FC = () => {
     resetStage(stageIdx);
   };
 
-  if (!isActive) return null;
+  if (!isActive || !assetsReady) return null;
 
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto flex flex-col overflow-hidden" style={{ background: FRESH.bgGrad }}>

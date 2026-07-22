@@ -3,6 +3,7 @@ import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
 import { playCorrect, playSoftClick, playWin, playWrong } from '../utils/levelAudio';
+import { useLevelAssetsGate } from '../hooks/useLevelAssetsGate';
 
 const MAX_LIVES = 3;
 const ROUND_COUNT = 6;
@@ -127,6 +128,7 @@ export const Level25WordFunGame: React.FC = () => {
     runId
   } = useGameStore();
   const isActive = status === 'playing' && currentLevelId === 20;
+  const assetsReady = useLevelAssetsGate(20, isActive, runId);
 
   const [stage, setStage] = useState<1 | 2>(1);
   const [deck, setDeck] = useState<Puzzle[]>(() => shufflePick(PIC_POOL, ROUND_COUNT));
@@ -270,7 +272,7 @@ export const Level25WordFunGame: React.FC = () => {
     }, 360);
   };
 
-  if (!isActive || !puzzle) return null;
+  if (!isActive || !assetsReady || !puzzle) return null;
 
   const isPic = puzzle.kind === 'pic';
   const title = '🐑 梗图夜话';

@@ -39,7 +39,10 @@ import { AssetLoadOverlay } from './components/AssetLoadOverlay';
 import { useGameStore } from './store/gameStore';
 import { FRESH, DESIGN_WIDTH, DESIGN_HEIGHT } from './utils/levelTheme';
 import { setMenuBgmActive, unlockAudio } from './utils/audioManager';
-import { setLevel24BgmActive } from './utils/level24Bgm';
+import { prefetchLevel24Bgm, setLevel24BgmActive } from './utils/level24Bgm';
+import { prefetchHomeCover } from './utils/homeCoverCache';
+import { prefetchLevel1Bgm } from './utils/level1Bgm';
+import { prefetchLevelAssets } from './utils/levelAssetCache';
 
 export default function App() {
   const initialized = useRef(false);
@@ -57,32 +60,43 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // 首页封面优先完成后，再初始化 Phaser，避免启动抢带宽
   useEffect(() => {
     if (initialized.current) return;
-    initialized.current = true;
+    let cancelled = false;
+    void prefetchHomeCover().finally(() => {
+      if (cancelled || initialized.current) return;
+      initialized.current = true;
 
-    const config: Phaser.Types.Core.GameConfig = {
-      type: Phaser.AUTO,
-      parent: 'game-container',
-      width: DESIGN_WIDTH,
-      height: DESIGN_HEIGHT,
-      scene: [Boot, Game, GameOver],
-      scale: {
-        mode: Phaser.Scale.NONE,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-      },
-      backgroundColor: FRESH.bg,
-      physics: {
-        default: 'arcade',
-        arcade: { gravity: { x: 0, y: 0 }, debug: false }
-      }
-    };
+      const config: Phaser.Types.Core.GameConfig = {
+        type: Phaser.AUTO,
+        parent: 'game-container',
+        width: DESIGN_WIDTH,
+        height: DESIGN_HEIGHT,
+        scene: [Boot, Game, GameOver],
+        scale: {
+          mode: Phaser.Scale.NONE,
+          autoCenter: Phaser.Scale.CENTER_BOTH
+        },
+        backgroundColor: FRESH.bg,
+        physics: {
+          default: 'arcade',
+          arcade: { gravity: { x: 0, y: 0 }, debug: false }
+        }
+      };
 
-    const game = new Phaser.Game(config);
+      const game = new Phaser.Game(config);
+      (window as Window & { __ctxiangPhaser?: Phaser.Game }).__ctxiangPhaser = game;
+    });
 
     return () => {
-      game.destroy(true);
-      initialized.current = false;
+      cancelled = true;
+      const g = (window as Window & { __ctxiangPhaser?: Phaser.Game }).__ctxiangPhaser;
+      if (g) {
+        g.destroy(true);
+        (window as Window & { __ctxiangPhaser?: Phaser.Game }).__ctxiangPhaser = undefined;
+        initialized.current = false;
+      }
     };
   }, []);
 
@@ -96,13 +110,26 @@ export default function App() {
       setMenuBgmActive(false);
       return;
     }
-    // 首页先让封面抢带宽，稍后再拉菜单 BGM
+    // 封面就绪后再播菜单 BGM
     if (status === 'home') {
-      const t = window.setTimeout(() => setMenuBgmActive(true), 700);
-      return () => window.clearTimeout(t);
+      let alive = true;
+      void prefetchHomeCover().then(() => {
+        if (alive && useGameStore.getState().status === 'home') setMenuBgmActive(true);
+      });
+      return () => {
+        alive = false;
+      };
     }
     setMenuBgmActive(true);
   }, [status]);
+
+  // 进入关卡流程即优先下载本关素材（玩法图 + 结算表情包）与必要 BGM
+  useEffect(() => {
+    if (!(status === 'level_intro' || status === 'start' || status === 'playing')) return;
+    void prefetchLevelAssets(currentLevelId);
+    if (currentLevelId === 1) void prefetchLevel1Bgm();
+    if (currentLevelId === 24) void prefetchLevel24Bgm();
+  }, [status, currentLevelId]);
 
   // 第 24 关：规则页无 BGM；游戏界面与结算页循环播放生日快乐曲
   useEffect(() => {
@@ -168,9 +195,9 @@ export default function App() {
         {status === 'playing' && currentLevelId === 24 && <Level24BirthdayGame />}
         <PlaceholderLevelGame />
         <GameOverUI />
-        <AssetLoadOverlay />
         <div id="pause-root" className="absolute inset-0 z-[200] pointer-events-none" aria-hidden />
         <GamePauseOverlay />
+        <AssetLoadOverlay />
       </div>
     </div>
   );

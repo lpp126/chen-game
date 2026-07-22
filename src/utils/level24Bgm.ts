@@ -1,23 +1,24 @@
 /** 第 24 关专属 BGM：玩法 + 结算循环；规则页 / 其它状态不播（不受菜单静音影响） */
 
-import { clearAssetLoad, reportAssetLoad } from '../components/AssetLoadOverlay';
+import { clearAssetGate, setAssetGate } from './assetGate';
 import { blobToObjectUrl, loadWithProgress } from './loadWithProgress';
 
 export const LEVEL24_BGM_SRC = '/audio/level24-bgm.mp3';
 
+const GATE = 'level24-bgm';
 const HUB_KEY = '__ctxiangLevel24Bgm';
 
 type Hub = {
   el: HTMLAudioElement | null;
   shouldPlay: boolean;
-  loading: boolean;
+  promise: Promise<HTMLAudioElement> | null;
   objectUrl: string | null;
 };
 
 const getHub = (): Hub => {
   const w = window as Window & { [HUB_KEY]?: Hub };
   if (!w[HUB_KEY]) {
-    w[HUB_KEY] = { el: null, shouldPlay: false, loading: false, objectUrl: null };
+    w[HUB_KEY] = { el: null, shouldPlay: false, promise: null, objectUrl: null };
   }
   return w[HUB_KEY]!;
 };
@@ -41,36 +42,46 @@ const playIfNeeded = () => {
   void hub.el.play().catch(() => undefined);
 };
 
-const ensureLoaded = async () => {
+/** 优先下载第 24 关 BGM；未完成时会挂上加载门禁 */
+export function prefetchLevel24Bgm(): Promise<HTMLAudioElement> {
   const hub = getHub();
-  if (hub.el) return hub.el;
-  if (hub.loading) return null;
-  hub.loading = true;
-  reportAssetLoad('关卡音乐', 0.02);
-  try {
-    const blob = await loadWithProgress(LEVEL24_BGM_SRC, (p) => reportAssetLoad('关卡音乐', Math.max(0.02, p)));
-    const url = blobToObjectUrl(blob);
-    hub.objectUrl = url;
-    const el = new Audio(url);
-    el.loop = true;
-    el.preload = 'auto';
-    el.volume = 0.7;
-    hub.el = el;
-    clearAssetLoad();
-    return el;
-  } catch {
-    // 回退直链
-    const el = new Audio(LEVEL24_BGM_SRC);
-    el.loop = true;
-    el.preload = 'auto';
-    el.volume = 0.7;
-    hub.el = el;
-    clearAssetLoad();
-    return el;
-  } finally {
-    hub.loading = false;
-  }
-};
+  if (hub.el) return Promise.resolve(hub.el);
+  if (hub.promise) return hub.promise;
+
+  setAssetGate(GATE, '正在加载关卡音乐', 0.02, 90);
+  hub.promise = loadWithProgress(LEVEL24_BGM_SRC, (p) => {
+    setAssetGate(GATE, '正在加载关卡音乐', Math.max(0.02, p), 90);
+  })
+    .then((blob) => {
+      const url = blobToObjectUrl(blob);
+      hub.objectUrl = url;
+      const el = new Audio(url);
+      el.loop = true;
+      el.preload = 'auto';
+      el.volume = 0.7;
+      hub.el = el;
+      clearAssetGate(GATE);
+      return el;
+    })
+    .catch(() => {
+      const el = new Audio(LEVEL24_BGM_SRC);
+      el.loop = true;
+      el.preload = 'auto';
+      el.volume = 0.7;
+      hub.el = el;
+      clearAssetGate(GATE);
+      return el;
+    })
+    .finally(() => {
+      hub.promise = null;
+    });
+
+  return hub.promise;
+}
+
+export function isLevel24BgmReady(): boolean {
+  return Boolean(getHub().el);
+}
 
 /** playing / gameover 时为 true；规则页 start、开场 intro 等为 false */
 export const setLevel24BgmActive = (active: boolean) => {
@@ -78,10 +89,9 @@ export const setLevel24BgmActive = (active: boolean) => {
   hub.shouldPlay = active;
   if (!active) {
     hardStop();
-    clearAssetLoad();
     return;
   }
-  void ensureLoaded().then(() => {
+  void prefetchLevel24Bgm().then(() => {
     if (getHub().shouldPlay) playIfNeeded();
   });
 };
