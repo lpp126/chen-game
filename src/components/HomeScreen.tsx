@@ -1,9 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { DESIGN_HEIGHT, FRESH } from '../utils/levelTheme';
 import { unlockAudio } from '../utils/audioManager';
+import { clearAssetLoad, reportAssetLoad } from './AssetLoadOverlay';
 import { AccountSyncModal } from './AccountSyncModal';
 import { WishWallModal } from './WishWallModal';
+import { blobToObjectUrl, loadWithProgress } from '../utils/loadWithProgress';
 
 const HOME_COVER = '/images/home-cover.webp';
 
@@ -14,11 +16,53 @@ export const HomeScreen: React.FC = () => {
   const { status, goLevelSelect, accountNickname, adminMode, showAdminLogin, showAdminLoginModal, loginAdmin, hydrateCloudSave } =
     useGameStore();
   const timerRef = useRef<number | null>(null);
+  const coverUrlRef = useRef<string | null>(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loginOpen, setLoginOpen] = useState(false);
   const [wishWallOpen, setWishWallOpen] = useState(false);
+  const [coverSrc, setCoverSrc] = useState<string | null>(null);
+  const [coverReady, setCoverReady] = useState(false);
+
+  useEffect(() => {
+    if (status !== 'home') return;
+    let cancelled = false;
+    setCoverReady(false);
+    reportAssetLoad('首页封面', 0.02);
+    void loadWithProgress(HOME_COVER, (p) => {
+      if (!cancelled) reportAssetLoad('首页封面', Math.max(0.02, p));
+    })
+      .then((blob) => {
+        if (cancelled) return;
+        if (coverUrlRef.current) URL.revokeObjectURL(coverUrlRef.current);
+        const url = blobToObjectUrl(blob);
+        coverUrlRef.current = url;
+        setCoverSrc(url);
+        setCoverReady(true);
+        clearAssetLoad();
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // 回退直链，避免完全空白
+        setCoverSrc(HOME_COVER);
+        setCoverReady(true);
+        clearAssetLoad();
+      });
+    return () => {
+      cancelled = true;
+      clearAssetLoad();
+    };
+  }, [status]);
+
+  useEffect(() => {
+    return () => {
+      if (coverUrlRef.current) {
+        URL.revokeObjectURL(coverUrlRef.current);
+        coverUrlRef.current = null;
+      }
+    };
+  }, []);
 
   if (status !== 'home') return null;
 
@@ -60,14 +104,18 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <div className="absolute inset-0 z-50 pointer-events-auto overflow-hidden bg-[#0a1628]">
-      <img
-        src={HOME_COVER}
-        alt="24帧人生"
-        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
-        draggable={false}
-        fetchPriority="high"
-        decoding="async"
-      />
+      {coverSrc && (
+        <img
+          src={coverSrc}
+          alt="24帧人生"
+          className={`absolute inset-0 w-full h-full object-cover pointer-events-none select-none transition-opacity duration-500 ${
+            coverReady ? 'opacity-100' : 'opacity-0'
+          }`}
+          draggable={false}
+          fetchPriority="high"
+          decoding="async"
+        />
+      )}
 
       <button
         type="button"
@@ -75,7 +123,8 @@ export const HomeScreen: React.FC = () => {
         className="absolute top-4 right-3.5 z-30 flex items-center gap-1.5 px-3 h-9 rounded-full border border-white/70 text-[22px] font-bold text-white active:scale-95 transition-transform"
         style={{
           background: 'linear-gradient(135deg, rgba(255,179,71,0.92), rgba(255,140,66,0.92))',
-          boxShadow: '0 5px 14px rgba(255,140,66,0.32)'
+          boxShadow: '0 5px 14px rgba(255,140,66,0.32)',
+          opacity: coverReady ? 1 : 0.35
         }}
       >
         <span className="text-[26px]" aria-hidden>
@@ -87,7 +136,8 @@ export const HomeScreen: React.FC = () => {
       <button
         type="button"
         onClick={enterGame}
-        className="absolute left-1/2 z-30 flex h-[72px] w-[320px] -translate-x-1/2 items-center justify-center gap-3 rounded-full border border-white/75 text-[28px] font-bold leading-none tracking-[0.08em] text-white whitespace-nowrap active:scale-[0.97] transition-transform touch-manipulation"
+        disabled={!coverReady}
+        className="absolute left-1/2 z-30 flex h-[72px] w-[320px] -translate-x-1/2 items-center justify-center gap-3 rounded-full border border-white/75 text-[28px] font-bold leading-none tracking-[0.08em] text-white whitespace-nowrap active:scale-[0.97] transition-transform touch-manipulation disabled:opacity-40 disabled:active:scale-100"
         style={{
           bottom: START_BTN_BOTTOM_PX,
           background: 'linear-gradient(90deg, #3a9fc4 0%, #45b896 100%)',

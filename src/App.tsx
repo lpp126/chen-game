@@ -35,6 +35,7 @@ import { Level24BirthdayGame } from './components/Level24BirthdayGame';
 import { Level25WordFunGame } from './components/Level25WordFunGame';
 import { LevelIntroScreen } from './components/LevelIntroScreen';
 import { GamePauseOverlay } from './components/GamePauseOverlay';
+import { AssetLoadOverlay } from './components/AssetLoadOverlay';
 import { useGameStore } from './store/gameStore';
 import { FRESH, DESIGN_WIDTH, DESIGN_HEIGHT } from './utils/levelTheme';
 import { setMenuBgmActive, unlockAudio } from './utils/audioManager';
@@ -167,6 +168,7 @@ export default function App() {
         {status === 'playing' && currentLevelId === 24 && <Level24BirthdayGame />}
         <PlaceholderLevelGame />
         <GameOverUI />
+        <AssetLoadOverlay />
         <div id="pause-root" className="absolute inset-0 z-[200] pointer-events-none" aria-hidden />
         <GamePauseOverlay />
       </div>

@@ -1,5 +1,6 @@
 import { Scene } from 'phaser';
 import { useGameStore } from '../../store/gameStore';
+import { clearAssetLoad, reportAssetLoad } from '../../components/AssetLoadOverlay';
 import { LEVEL1_HUD_HEIGHT } from '../../utils/levelTheme';
 
 const BPM = 92; // 略加快节拍，缩短通关时间
@@ -510,6 +511,7 @@ export class Game extends Scene {
 
   private ensureLevel1Bgm(thenPlay: boolean) {
     const bind = () => {
+      clearAssetLoad();
       if (!this.sound.get('bgm-women')) {
         this.bgm = this.sound.add('bgm-women', { loop: true, volume: 0.7 });
       } else {
@@ -529,8 +531,19 @@ export class Game extends Scene {
       return;
     }
 
+    reportAssetLoad('关卡音乐', 0.02);
     this.load.audio('bgm-women', '/audio/level1-bgm.mp3');
-    this.load.once(Phaser.Loader.Events.COMPLETE, () => bind());
+    this.load.on(Phaser.Loader.Events.PROGRESS, (value: number) => {
+      reportAssetLoad('关卡音乐', Math.max(0.02, value));
+    });
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      this.load.off(Phaser.Loader.Events.PROGRESS);
+      bind();
+    });
+    this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
+      this.load.off(Phaser.Loader.Events.PROGRESS);
+      clearAssetLoad();
+    });
     this.load.start();
   }
 
