@@ -1,5 +1,6 @@
 import React from 'react';
 import { useGameStore } from '../store/gameStore';
+import { LEVELS } from '../data/levels';
 
 export const PlaceholderLevelGame: React.FC = () => {
   const {
@@ -16,7 +17,7 @@ export const PlaceholderLevelGame: React.FC = () => {
     testCompleteLevel
   } = useGameStore();
 
-  if (status !== 'playing' || currentLevelId <= 24) return null;
+  if (status !== 'playing' || currentLevelId <= LEVELS.length) return null;
 
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto flex flex-col items-center justify-center bg-[#dcecf5]">

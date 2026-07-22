@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { DESIGN_WIDTH, DESIGN_HEIGHT } from '../utils/levelTheme';
+import { playCollect, playJump, playWin } from '../utils/levelAudio';
 
 type PlatformType = 'basic' | 'cloud' | 'moving-horizontal' | 'moving-vertical' | 'swing';
 type Platform = {
@@ -40,7 +41,7 @@ const PLAY_VIEW_H = VIEW_H - CONTROL_SAFE_H;
 const CAMERA_PLAYER_RATIO = 0.52; // 基于可视游戏区，让宝宝停留在中部略偏下
 const START_POS = { x: 120, y: WORLD_H - 430 }; // 初始点上移，避免被底部按钮遮挡
 const COLORS = ['#c08f8f', '#d6b584', '#8aa3c4', '#90b49b'];
-const BABY_SPRITE = '/images/背带裤小添.png';
+const BABY_SPRITE = '/images/背带裤小添.webp';
 
 const createPlatforms = (): Platform[] => [
   { id: 'ground', x: 70, y: WORLD_H - 120, w: 220, h: 42, type: 'basic', color: '#8aa3c4' },
@@ -204,6 +205,7 @@ export const Level3JumpGame: React.FC = () => {
   const triggerJump = () => {
     if (gameplayPaused) return;
     if (availableJumps <= 0) return;
+    playJump();
     setPlayer((cur) => ({ ...cur, vy: JUMP_SPEED }));
     setAvailableJumps((n) => n - 1);
     setIsGrounded(false);
@@ -289,26 +291,41 @@ export const Level3JumpGame: React.FC = () => {
           window.setTimeout(() => setToast(''), 900);
         }
 
-        setStars((curStars) =>
-          curStars.map((s) => (s.collected ? s : Math.hypot(centerX - s.x, centerY - s.y) < 30 ? { ...s, collected: true } : s))
-        );
+        setStars((curStars) => {
+          let gained = false;
+          const next = curStars.map((s) => {
+            if (s.collected) return s;
+            if (Math.hypot(centerX - s.x, centerY - s.y) < 30) {
+              gained = true;
+              return { ...s, collected: true };
+            }
+            return s;
+          });
+          if (gained) playCollect();
+          return next;
+        });
 
-        setOrangeBlocks((curOranges) =>
-          curOranges.map((o) => {
+        setOrangeBlocks((curOranges) => {
+          let gained = false;
+          const next = curOranges.map((o) => {
             if (o.collected) return o;
             if (Math.hypot(centerX - o.x, centerY - o.y) < 30) {
+              gained = true;
               setToast('🍊 +1');
               window.setTimeout(() => setToast(''), 700);
               return { ...o, collected: true };
             }
             return o;
-          })
-        );
+          });
+          if (gained) playCollect();
+          return next;
+        });
 
         const goalX = 415;
         const goalY = WORLD_H - 3068;
         if (!finishedRef.current && Math.hypot(centerX - goalX, centerY - goalY) < 55) {
           finishedRef.current = true;
+          playWin();
           const elapsed = (Date.now() - levelStart.current) / 1000;
           const collectedStars = stars.filter((s) => s.collected).length;
           const rank = collectedStars >= 10 && elapsed <= 120 ? 3 : collectedStars >= 5 ? 2 : 1;
@@ -367,11 +384,11 @@ export const Level3JumpGame: React.FC = () => {
         }}
       />
       <LevelTopBar
-        title="🧱 积木世界快乐跳跃"
+        title="🧱 星星蹦床"
         onPause={() => setGameplayPaused(true)}
         stats={[
           { label: '🍊', value: `${orangeCount}/5` },
-          { label: '⭐', value: `${starCount}/10` },
+          { label: '收集', value: `${starCount}/10` },
           { label: '⏱', value: `${timeLeft}s` }
         ]}
       />

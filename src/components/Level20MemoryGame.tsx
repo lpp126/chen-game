@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
-import { playCorrect, playTap, playWin, playWrong } from '../utils/levelAudio';
+import { playCorrect, playToneIndex, playWin, playWrong } from '../utils/levelAudio';
 
 const COLORS = [
   { id: 0, bg: '#c75b7a', label: '红' },
@@ -12,12 +12,12 @@ const COLORS = [
 ] as const;
 
 const ROUNDS = 6;
-const MAX_MISS = 2;
+const MAX_MISS = 3;
 
 export const Level20MemoryGame: React.FC = () => {
   const { status, currentLevelId, gameplayPaused, setGameplayPaused, restartCurrentLevel, goLevelSelect, completeLevel, adminMode, runId } =
     useGameStore();
-  const isActive = status === 'playing' && currentLevelId === 20;
+  const isActive = status === 'playing' && currentLevelId === 22;
 
   const [round, setRound] = useState(0);
   const [sequence, setSequence] = useState<number[]>([]);
@@ -67,7 +67,7 @@ export const Level20MemoryGame: React.FC = () => {
         return;
       }
       setLit(seq[i]);
-      playTap();
+      playToneIndex(seq[i]);
       window.setTimeout(() => {
         setLit(null);
         i += 1;
@@ -90,6 +90,7 @@ export const Level20MemoryGame: React.FC = () => {
   const pick = (id: number) => {
     if (!isActive || gameplayPaused || ended || phase !== 'input') return;
     if (sequence[inputIdx] === id) {
+      playToneIndex(id);
       playCorrect();
       const ni = inputIdx + 1;
       setInputIdx(ni);
@@ -117,13 +118,12 @@ export const Level20MemoryGame: React.FC = () => {
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto flex flex-col overflow-hidden" style={{ background: FRESH.bgGrad }}>
       <LevelTopBar
-        title="🎬 镜头倒数"
+        title="🎬 试镜倒计时"
         onPause={() => setGameplayPaused(true)}
         hint={phase === 'show' ? '记住亮灯顺序…' : '按相同顺序点击复现'}
         stats={[
           { label: '轮次', value: `${Math.min(round + 1, ROUNDS)}/${ROUNDS}` },
-          { label: '失误', value: `${misses}/${MAX_MISS}` },
-          { label: '⭐', value: `${starsPreview}/3` }
+          { label: '失误', value: `${misses}/${MAX_MISS}` }
         ]}
       />
       <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-6 bg-[#1a1428]">

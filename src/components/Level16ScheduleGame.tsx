@@ -66,7 +66,7 @@ const isCompleteValid = (grid: number[][]) => {
 export const Level16ScheduleGame: React.FC = () => {
   const { status, currentLevelId, gameplayPaused, setGameplayPaused, restartCurrentLevel, goLevelSelect, completeLevel, adminMode, runId } =
     useGameStore();
-  const isActive = status === 'playing' && currentLevelId === 16;
+  const isActive = status === 'playing' && currentLevelId === 21;
 
   const [puzzleIdx, setPuzzleIdx] = useState(0);
   const puzzle = PUZZLES[puzzleIdx];
@@ -160,11 +160,10 @@ export const Level16ScheduleGame: React.FC = () => {
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto flex flex-col overflow-hidden" style={{ background: FRESH.bgGrad }}>
       <LevelTopBar
-        title="🔢 四格数独"
+        title="🔢 夜灯数独"
         onPause={() => setGameplayPaused(true)}
         hint={hint ?? `第 ${puzzleIdx + 1}/${PUZZLES.length} 题 · 四个 2×2 宫格各含 1-4 各一次`}
         stats={[
-          { label: '⭐', value: `${starsPreview}/3` },
           { label: '失误', value: String(mistakes) }
         ]}
       />

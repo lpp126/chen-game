@@ -2,15 +2,19 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
-import { playCorrect, playPop, playWin } from '../utils/levelAudio';
+import { playCorrect, playToggle, playWin } from '../utils/levelAudio';
 
-/** 由全灭状态经 1~3 次点击生成（正确四邻规则），保证可解 */
+/** 由全灭状态经点击生成（正确四邻规则），保证可解；三小关由易到难 */
 const PUZZLES = [
-  [1, 0, 0, 0, 1, 0, 0, 1, 0],
-  [0, 0, 0, 1, 0, 1, 1, 0, 0],
-  [1, 1, 1, 0, 1, 0, 0, 0, 0]
+  // 1~2 步：点中心即可
+  [0, 1, 0, 1, 1, 1, 0, 1, 0],
+  // 3~4 步
+  [0, 1, 0, 1, 0, 1, 0, 1, 0],
+  // 4~6 步（5 步）
+  [1, 1, 1, 1, 1, 1, 1, 1, 1]
 ];
 
+const HINTS_PER_STAGE = [1, 3, 5];
 const COLS = 3;
 
 const clone = (g: number[]) => [...g];
@@ -75,12 +79,13 @@ export const Level10PetCareGame: React.FC = () => {
   const [hintCell, setHintCell] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [usedHints, setUsedHints] = useState(0);
+  const [totalHintsUsed, setTotalHintsUsed] = useState(0);
 
   const starsPreview = useMemo(() => {
-    if (usedHints === 0 && taps <= 10) return 3;
-    if (usedHints <= 1 && taps <= 14) return 2;
+    if (totalHintsUsed === 0 && taps <= 12) return 3;
+    if (totalHintsUsed <= 3 && taps <= 18) return 2;
     return 1;
-  }, [taps, usedHints]);
+  }, [taps, totalHintsUsed]);
 
   const succeedAll = useCallback(() => {
     setEnded(true);
@@ -97,17 +102,21 @@ export const Level10PetCareGame: React.FC = () => {
     setHintCell(null);
     setMsg(null);
     setUsedHints(0);
+    setTotalHintsUsed(0);
   }, [isActive, runId]);
 
   const loadPuzzle = (i: number) => {
     setGrid(clone(PUZZLES[i]));
     setHintCell(null);
     setMsg(null);
+    setUsedHints(0);
   };
+
+  const stageHintMax = HINTS_PER_STAGE[pIdx] ?? 1;
 
   const tap = (i: number) => {
     if (!isActive || gameplayPaused || ended) return;
-    playPop();
+    playToggle();
     setHintCell(null);
     setTaps((t) => t + 1);
     setGrid((prev) => {
@@ -132,6 +141,10 @@ export const Level10PetCareGame: React.FC = () => {
 
   const showHint = () => {
     if (!isActive || gameplayPaused || ended) return;
+    if (usedHints >= stageHintMax) {
+      setMsg(`本关提示已用完（${stageHintMax} 次）`);
+      return;
+    }
     const sol = solveFrom(grid);
     if (sol.length === 0) {
       setMsg(allOff(grid) ? '本关已全灭' : '当前局面异常，请点重置');
@@ -139,8 +152,9 @@ export const Level10PetCareGame: React.FC = () => {
       return;
     }
     setUsedHints((h) => h + 1);
+    setTotalHintsUsed((h) => h + 1);
     setHintCell(sol[0]);
-    setMsg(`提示：还需 ${sol.length} 步 · 点高亮格（可多次点提示跟进）`);
+    setMsg(`提示 ${usedHints + 1}/${stageHintMax}：点高亮格试试`);
   };
 
   const resetPuzzle = () => {
@@ -154,13 +168,13 @@ export const Level10PetCareGame: React.FC = () => {
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto flex flex-col overflow-hidden" style={{ background: FRESH.bgGrad }}>
       <LevelTopBar
-        title="💡 点灯小游戏"
+        title="💡 熄灯计划"
         onPause={() => setGameplayPaused(true)}
-        hint={msg ?? '点击格子会翻转自身及上下左右（不含斜对角、不跨行折返）'}
+        hint={msg ?? '点击格子会翻转自身及上下左右'}
         stats={[
           { label: '关', value: `${Math.min(pIdx + 1, PUZZLES.length)}/${PUZZLES.length}` },
           { label: '点击', value: String(taps) },
-          { label: '⭐', value: `${starsPreview}/3` }
+          { label: '提示', value: `${usedHints}/${stageHintMax}` }
         ]}
       />
       <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-5">
@@ -178,11 +192,20 @@ export const Level10PetCareGame: React.FC = () => {
             </button>
           ))}
         </div>
-        <div className="flex gap-3 px-6 w-full max-w-[320px]">
-          <button type="button" onClick={showHint} className="flex-1 py-3 rounded-xl bg-white/90 border border-white text-sm font-semibold text-[#1a3348] active:scale-95">
-            💡 下一步提示
+        <div className="flex gap-2.5 w-[18rem]">
+          <button
+            type="button"
+            onClick={showHint}
+            disabled={usedHints >= stageHintMax}
+            className="flex-[1.25] py-3 px-2 rounded-xl bg-white/90 border border-white text-sm font-semibold text-[#1a3348] active:scale-95 disabled:opacity-40 whitespace-nowrap"
+          >
+            💡 提示 ({stageHintMax - usedHints})
           </button>
-          <button type="button" onClick={resetPuzzle} className="flex-1 py-3 rounded-xl bg-white/90 border border-white text-sm font-semibold text-[#1a3348] active:scale-95">
+          <button
+            type="button"
+            onClick={resetPuzzle}
+            className="flex-1 py-3 px-2 rounded-xl bg-white/90 border border-white text-sm font-semibold text-[#1a3348] active:scale-95 whitespace-nowrap"
+          >
             ↺ 重置
           </button>
         </div>

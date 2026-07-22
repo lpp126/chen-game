@@ -21,7 +21,7 @@ const MAX_MISS = 3;
 export const Level14BasketballGame: React.FC = () => {
   const { status, currentLevelId, gameplayPaused, setGameplayPaused, restartCurrentLevel, goLevelSelect, completeLevel, adminMode, runId } =
     useGameStore();
-  const isActive = status === 'playing' && currentLevelId === 14;
+  const isActive = status === 'playing' && currentLevelId === 20;
 
   const [idx, setIdx] = useState(0);
   const [done, setDone] = useState(0);
@@ -88,8 +88,7 @@ export const Level14BasketballGame: React.FC = () => {
         hint="哪边算式结果更大？点选一侧"
         stats={[
           { label: '进度', value: `${done}/${TARGET}` },
-          { label: '失误', value: `${misses}/${MAX_MISS}` },
-          { label: '⭐', value: `${starsPreview}/3` }
+          { label: '失误', value: `${misses}/${MAX_MISS}` }
         ]}
       />
       <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-5 gap-6">

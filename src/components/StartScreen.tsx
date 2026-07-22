@@ -109,9 +109,7 @@ export const StartScreen: React.FC = () => {
           <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
         </div>
 
-        <h1 className="text-[1.65rem] font-bold text-center leading-snug mb-1 px-2" style={{ color: FRESH.text }}>{level.title}</h1>
-        <p className="text-sm text-center mb-1" style={{ color: FRESH.textSoft }}>{theme.subtitle}</p>
-        <p className="text-xs mb-4" style={{ color: FRESH.textMuted }}>{level.theme}</p>
+        <h1 className="text-[1.65rem] font-bold text-center leading-snug mb-4 px-2" style={{ color: FRESH.text }}>{level.title}</h1>
 
         <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/55 backdrop-blur-md border border-white/75 shadow-sm mb-4">
           <span className="text-xs" style={{ color: FRESH.textSoft }}>历史最佳</span>

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
-import { playCorrect, playWin, playWrong } from '../utils/levelAudio';
+import { playCorrect, playSparkle, playWin, playWrong } from '../utils/levelAudio';
 
 const TARGET = 6;
 const MAX_MISS = 3;
@@ -13,18 +13,20 @@ type RoundTheme = {
   hex: string;
   label: string;
   mode: ShiftMode;
-  /** 色差强度（随轮次递减） */
+  /** 色差强度（随轮次递减，但仍可肉眼分辨） */
   delta: number;
+  /** 网格边长：3→3→4→4→5→6 */
+  size: number;
 };
 
-/** 6 轮各用不同色系，色差逐步缩小 */
+/** 6 小关：方格递增，色差递减小一档 */
 const ROUND_THEMES: RoundTheme[] = [
-  { hex: '#cda7a7', label: '玫瑰粉', mode: 'lightness', delta: 22 },
-  { hex: '#9eb39f', label: '薄荷绿', mode: 'lightness', delta: 17 },
-  { hex: '#9caec3', label: '雾蓝色', mode: 'saturation', delta: 14 },
-  { hex: '#ccb494', label: '暖沙色', mode: 'lightness', delta: 11 },
-  { hex: '#aac2d8', label: '天青色', mode: 'saturation', delta: 8 },
-  { hex: '#d4a574', label: '琥珀色', mode: 'hue', delta: 6 }
+  { hex: '#cda7a7', label: '玫瑰粉', mode: 'lightness', delta: 22, size: 3 },
+  { hex: '#9eb39f', label: '薄荷绿', mode: 'lightness', delta: 16, size: 3 },
+  { hex: '#9caec3', label: '雾蓝色', mode: 'saturation', delta: 12, size: 4 },
+  { hex: '#ccb494', label: '暖沙色', mode: 'lightness', delta: 9, size: 4 },
+  { hex: '#aac2d8', label: '天青色', mode: 'saturation', delta: 7, size: 5 },
+  { hex: '#d4a574', label: '琥珀色', mode: 'hue', delta: 5, size: 6 }
 ];
 
 type Round = {
@@ -111,9 +113,10 @@ const makeOddColor = (baseHex: string, mode: ShiftMode, delta: number): string =
 
 const makeRound = (roundIndex: number): Round => {
   const theme = ROUND_THEMES[Math.min(roundIndex, ROUND_THEMES.length - 1)];
-  const odd = Math.floor(Math.random() * 9);
+  const cells = theme.size * theme.size;
+  const odd = Math.floor(Math.random() * cells);
   const oddColor = makeOddColor(theme.hex, theme.mode, theme.delta);
-  const colors = Array.from({ length: 9 }, (_, i) => (i === odd ? oddColor : theme.hex));
+  const colors = Array.from({ length: cells }, (_, i) => (i === odd ? oddColor : theme.hex));
   return { colors, odd, theme, roundIndex };
 };
 
@@ -121,6 +124,13 @@ const difficultyLabel = (roundIndex: number): string => {
   if (roundIndex <= 1) return '简单';
   if (roundIndex <= 3) return '中等';
   return '困难';
+};
+
+const cellSizeClass = (size: number): string => {
+  if (size <= 3) return 'w-20 h-20';
+  if (size === 4) return 'w-14 h-14';
+  if (size === 5) return 'w-11 h-11';
+  return 'w-9 h-9';
 };
 
 export const Level23CountdownGame: React.FC = () => {
@@ -159,6 +169,7 @@ export const Level23CountdownGame: React.FC = () => {
   const tap = (i: number) => {
     if (!isActive || gameplayPaused || ended || failed) return;
     if (i === round.odd) {
+      playSparkle();
       playCorrect();
       const nd = done + 1;
       setDone(nd);
@@ -176,28 +187,32 @@ export const Level23CountdownGame: React.FC = () => {
 
   if (!isActive) return null;
 
+  const size = round.theme.size;
+
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto flex flex-col overflow-hidden" style={{ background: FRESH.bgGrad }}>
       <LevelTopBar
-        title="🎨 色差辨识"
+        title="🎨 色差分毫"
         onPause={() => setGameplayPaused(true)}
-        hint="每轮底色不同，色差越来越小，找出那一格"
+        hint={`${size}×${size} · 色差越来越小，找出那一格`}
         stats={[
           { label: '进度', value: `${done}/${TARGET}` },
-          { label: '本轮', value: round.theme.label },
+          { label: '网格', value: `${size}×${size}` },
           { label: '难度', value: difficultyLabel(round.roundIndex) },
-          { label: '失误', value: `${misses}/${MAX_MISS}` },
-          { label: '⭐', value: `${starsPreview}/3` }
+          { label: '失误', value: `${misses}/${MAX_MISS}` }
         ]}
       />
-      <div className="flex-1 min-h-0 flex items-center justify-center px-6">
-        <div className="grid grid-cols-3 gap-3 p-4 rounded-3xl bg-white/80 border border-white shadow-lg">
+      <div className="flex-1 min-h-0 flex items-center justify-center px-4">
+        <div
+          className="gap-1.5 p-3 rounded-3xl bg-white/80 border border-white shadow-lg"
+          style={{ display: 'grid', gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}
+        >
           {round.colors.map((c, i) => (
             <button
               key={`${done}-${round.theme.label}-${i}`}
               type="button"
               onClick={() => tap(i)}
-              className="w-20 h-20 rounded-2xl border-2 border-white shadow-md active:scale-95 transition-transform"
+              className={`${cellSizeClass(size)} rounded-xl border-2 border-white shadow-md active:scale-95 transition-transform`}
               style={{ background: c }}
             />
           ))}

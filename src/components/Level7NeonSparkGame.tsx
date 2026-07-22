@@ -14,8 +14,8 @@ interface Tile {
 
 /** 5×5 空位多，便于「一步多子」减压步数 */
 const GRID_SIZE = 5;
-/** 2048 链太长易劝退；本关胜利定为 1024，合并深度减半，总局步数大幅下降 */
-const TARGET_VALUE = 1024;
+/** 本关胜利目标 512 */
+const TARGET_VALUE = 512;
 const MOVE_DURATION_MS = 160;
 const CLEAR_NEW_TILE_MS = 120;
 /** 合并后空位 ≥ 此值：一步连落 3 块；否则见 DOUBLE_SPAWN_MIN_EMPTY */
@@ -74,7 +74,7 @@ const weightedSpawnPick = (pool: number[], maxTileOnBoard: number): number => {
   return pool[pool.length - 1];
 };
 
-/** 胜利目标 1024，掉落池收紧并更早引入 8，减少低位磨蹭步数 */
+/** 胜利目标 512，掉落池随棋盘最高块收紧 */
 const pickSpawnValue = (maxTileOnBoard: number): number => {
   let pool: number[];
   if (maxTileOnBoard < 8) pool = [2];
@@ -319,7 +319,7 @@ export const Level7NeonSparkGame: React.FC = () => {
   const resolveFailure = (maxValue: number) => {
     if (finishRef.current) return;
     finishRef.current = true;
-    const stars = maxValue >= 768 ? 2 : maxValue >= 512 ? 1 : 0;
+    const stars = maxValue >= 384 ? 2 : maxValue >= 256 ? 1 : 0;
     playBlockedSound();
     setBoardFullOverlay({ maxValue, stars });
   };
@@ -410,17 +410,17 @@ export const Level7NeonSparkGame: React.FC = () => {
       <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'repeating-linear-gradient(32deg,#e8e0d2,#e8e0d2 6px,#ede6d9 6px,#ede6d9 13px)' }} />
 
       <LevelTopBar
-        title="🧩 数字华容道"
+        title="🧩 数字合体"
         onPause={() => setGameplayPaused(true)}
         stats={[
           { label: '🏆 目标', value: String(TARGET_VALUE) },
-          { label: '⭐', value: `${currentMax >= TARGET_VALUE ? 3 : currentMax >= 768 ? 2 : currentMax >= 512 ? 1 : 0}/3` }
+          { label: '目前最高', value: String(currentMax) }
         ]}
       />
 
-      <div className="absolute inset-x-0 top-[160px] flex justify-center">
+      <div className="absolute inset-x-0 top-[112px] bottom-0 flex flex-col items-center justify-center gap-5 px-6 pointer-events-none">
         <div
-          className="relative rounded-[30px] border-[8px] border-[#60452F] shadow-[0_16px_36px_rgba(60,38,20,0.35)]"
+          className="relative rounded-[30px] border-[8px] border-[#60452F] shadow-[0_16px_36px_rgba(60,38,20,0.35)] pointer-events-auto"
           style={{ width: boardSize, height: boardSize, background: '#D7B58D', touchAction: 'none' }}
           onTouchStart={(e) => {
             const touch = e.touches[0];
@@ -494,17 +494,12 @@ export const Level7NeonSparkGame: React.FC = () => {
             );
           })}
         </div>
-      </div>
 
-      <div className="absolute left-12 right-12 top-[840px] h-[110px] rounded-3xl border border-[#B89871] bg-[#E7D5BE]/90 shadow-[0_8px_20px_rgba(78,53,30,0.2)] px-6 py-4 flex items-center justify-between text-[#4C3C2E]">
-        <div className="text-xl font-bold">本局得分：{score}</div>
-        <div className="text-xl font-bold">最高记录：{Math.max(bestTile, currentMax)}</div>
+        <p className="text-center text-base text-[#675543] px-4 leading-relaxed">
+          上下左右滑动，合并出更高的数字
+        </p>
+        {stuckHint && <p className="text-center text-sm text-[#7A4A35] px-4">{stuckHint}</p>}
       </div>
-
-      <div className="absolute left-8 right-8 top-[972px] rounded-2xl bg-[#F5EEE4]/80 border border-[#CDB596] px-5 py-3 text-sm text-[#675543] text-center">
-        {GRID_SIZE}×{GRID_SIZE} · 通关 {TARGET_VALUE} · 开局六格 · 空位≥{TRIPLE_SPAWN_MIN_EMPTY}一步三块、≥{DOUBLE_SPAWN_MIN_EMPTY}一步两块 · 更快凑连锁（动画仍舒缓）。
-      </div>
-      {stuckHint && <div className="absolute left-8 right-8 top-[1036px] text-center text-sm text-[#7A4A35]">{stuckHint}</div>}
 
       {adminMode && (
         <div className="absolute right-4 top-36 z-50">
@@ -526,7 +521,7 @@ export const Level7NeonSparkGame: React.FC = () => {
               {boardFullOverlay.stars > 0 ? (
                 <>
                   <br />
-                  <span className="text-[#6b5344]">已达到安慰评价：{boardFullOverlay.stars} 星；返回主页时会为你结算存档。</span>
+                  <span className="text-[#6b5344]">本局可获得 {boardFullOverlay.stars} 星；返回主页时会写入存档。</span>
                 </>
               ) : (
                 <>

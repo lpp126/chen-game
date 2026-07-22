@@ -1,11 +1,12 @@
 import { Scene } from 'phaser';
 import { useGameStore } from '../../store/gameStore';
 import { LEVEL1_HUD_HEIGHT } from '../../utils/levelTheme';
+import { isMuted } from '../../utils/audioManager';
 
-const BPM = 74; // Adjusted to match a slow ballad pace
+const BPM = 92; // 略加快节拍，缩短通关时间
 const BEAT_INTERVAL = 60000 / BPM; 
-const DROP_TIME = 2000; // 时间从顶部落到判定线
-const START_GRACE_MS = 1800; // 开局喘息时间，避免重开后立即掉落奶滴
+const DROP_TIME = 1500; // 时间从顶部落到判定线
+const START_GRACE_MS = 1200; // 开局喘息时间，避免重开后立即掉落奶滴
 const TRACK_TOP_GAP = 8;
 
 interface Note {
@@ -80,11 +81,22 @@ export class Game extends Scene {
     // Setup audio
     if (this.cache.audio.exists('bgm-women')) {
       if (!this.sound.get('bgm-women')) {
-        this.bgm = this.sound.add('bgm-women', { loop: true, volume: 1.0 });
+        this.bgm = this.sound.add('bgm-women', { loop: true, volume: isMuted() ? 0 : 0.7 });
       } else {
         this.bgm = this.sound.get('bgm-women');
       }
     }
+
+    const onMute = (ev: Event) => {
+      const muted = Boolean((ev as CustomEvent<{ muted: boolean }>).detail?.muted);
+      if (this.bgm) {
+        (this.bgm as Phaser.Sound.WebAudioSound).setVolume(muted ? 0 : 0.7);
+      }
+    };
+    window.addEventListener('ctxiang-mute', onMute);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener('ctxiang-mute', onMute);
+    });
 
     // Input handlers
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -98,19 +110,26 @@ export class Game extends Scene {
     // Subscribe to state changes from React
     this.storeUnsubscribe = useGameStore.subscribe(
       (state) => {
-        const shouldShowLevel1 = state.status === 'playing' && state.currentLevelId === 1;
-        this.cameras.main.setVisible(shouldShowLevel1);
+        const shouldPlayLevel1 = state.status === 'playing' && state.currentLevelId === 1;
+        this.cameras.main.setVisible(shouldPlayLevel1);
 
-        if (state.status === 'playing' && state.currentLevelId === 1 && (!this.isPlaying || state.runId !== this.runId)) {
+        if (shouldPlayLevel1 && (!this.isPlaying || state.runId !== this.runId)) {
           this.startGame(state.runId);
-        } else if ((state.status === 'gameover' || state.status === 'start' || state.currentLevelId !== 1) && this.isPlaying) {
-          this.stopGame();
+        } else if (!shouldPlayLevel1) {
+          // 离开第一关（返回选关/首页/结算等）一律停游戏并停 BGM
+          if (this.isPlaying) {
+            this.stopGame();
+          } else {
+            this.stopBgm();
+          }
         }
 
-        if (state.gameplayPaused) {
-          this.pauseGame();
-        } else {
-          this.resumeGame();
+        if (shouldPlayLevel1) {
+          if (state.gameplayPaused) {
+            this.pauseGame();
+          } else {
+            this.resumeGame();
+          }
         }
         
         // Update visuals based on fullness
@@ -519,14 +538,12 @@ export class Game extends Scene {
     this.pausedDuration = 0;
     
     // Play BGM
+    const vol = isMuted() ? 0 : 0.7;
     if (this.bgm && !this.bgm.isPlaying) {
-      // In a real app we might want to sync start time properly
-      // For now, simple play
-      this.bgm.play({ volume: 1.0 });
+      this.bgm.play({ volume: vol });
     } else if (this.bgm) {
-      // Reset position if it was already playing
       (this.bgm as Phaser.Sound.WebAudioSound).setSeek(0);
-      (this.bgm as Phaser.Sound.WebAudioSound).setVolume(1.0);
+      (this.bgm as Phaser.Sound.WebAudioSound).setVolume(vol);
     }
     
     // Clear old notes
@@ -536,14 +553,22 @@ export class Game extends Scene {
     console.log('Game Started');
   }
 
+  private stopBgm() {
+    if (!this.bgm) return;
+    try {
+      if (this.bgm.isPlaying || this.bgm.isPaused) {
+        this.bgm.stop();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   private stopGame() {
     this.isPlaying = false;
     this.isPaused = false;
     this.notes.forEach(n => { if (n.sprite) n.sprite.destroy(); });
-    
-    if (this.bgm && this.bgm.isPlaying) {
-      this.bgm.stop();
-    }
+    this.stopBgm();
     console.log('Game Stopped');
   }
 

@@ -22,7 +22,6 @@ import { Level10PetCareGame } from './components/Level10PetCareGame';
 import { Level11SpotlightGame } from './components/Level11SpotlightGame';
 import { Level12MatchFriendsGame } from './components/Level12MatchFriendsGame';
 import { Level13BalanceGame } from './components/Level13BalanceGame';
-import { Level14BasketballGame } from './components/Level14BasketballGame';
 import { Level15Match3Game } from './components/Level15Match3Game';
 import { Level16ScheduleGame } from './components/Level16ScheduleGame';
 import { Level17PathGame } from './components/Level17PathGame';
@@ -33,10 +32,12 @@ import { Level21LinesGame } from './components/Level21LinesGame';
 import { Level22MergeGame } from './components/Level22MergeGame';
 import { Level23CountdownGame } from './components/Level23CountdownGame';
 import { Level24BirthdayGame } from './components/Level24BirthdayGame';
+import { Level25WordFunGame } from './components/Level25WordFunGame';
 import { LevelIntroScreen } from './components/LevelIntroScreen';
 import { GamePauseOverlay } from './components/GamePauseOverlay';
 import { useGameStore } from './store/gameStore';
 import { FRESH, DESIGN_WIDTH, DESIGN_HEIGHT } from './utils/levelTheme';
+import { setMenuBgmActive, unlockAudio } from './utils/audioManager';
 
 export default function App() {
   const initialized = useRef(false);
@@ -87,6 +88,21 @@ export default function App() {
     void hydrateCloudSave();
   }, [hydrateCloudSave]);
 
+  useEffect(() => {
+    const menuActive = status === 'home' || status === 'level_select';
+    setMenuBgmActive(menuActive);
+  }, [status]);
+
+  useEffect(() => {
+    const unlock = () => unlockAudio();
+    window.addEventListener('pointerdown', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
+  }, []);
+
   return (
     <div className="relative w-screen h-[100dvh] overflow-hidden bg-black flex justify-center items-center">
       <div 
@@ -121,15 +137,15 @@ export default function App() {
         {status === 'playing' && currentLevelId === 11 && <Level11SpotlightGame />}
         {status === 'playing' && currentLevelId === 12 && <Level12MatchFriendsGame />}
         {status === 'playing' && currentLevelId === 13 && <Level13BalanceGame />}
-        {status === 'playing' && currentLevelId === 14 && <Level14BasketballGame />}
+        {status === 'playing' && currentLevelId === 14 && <Level22MergeGame />}
         {status === 'playing' && currentLevelId === 15 && <Level15Match3Game />}
-        {status === 'playing' && currentLevelId === 16 && <Level16ScheduleGame />}
+        {status === 'playing' && currentLevelId === 16 && <Level21LinesGame />}
         {status === 'playing' && currentLevelId === 17 && <Level17PathGame />}
         {status === 'playing' && currentLevelId === 18 && <Level18SlidePuzzleGame />}
         {status === 'playing' && currentLevelId === 19 && <Level19PackingGame />}
-        {status === 'playing' && currentLevelId === 20 && <Level20MemoryGame />}
-        {status === 'playing' && currentLevelId === 21 && <Level21LinesGame />}
-        {status === 'playing' && currentLevelId === 22 && <Level22MergeGame />}
+        {status === 'playing' && currentLevelId === 20 && <Level25WordFunGame />}
+        {status === 'playing' && currentLevelId === 21 && <Level16ScheduleGame />}
+        {status === 'playing' && currentLevelId === 22 && <Level20MemoryGame />}
         {status === 'playing' && currentLevelId === 23 && <Level23CountdownGame />}
         {status === 'playing' && currentLevelId === 24 && <Level24BirthdayGame />}
         <PlaceholderLevelGame />

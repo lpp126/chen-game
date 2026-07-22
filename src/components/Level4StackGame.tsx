@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Matter from 'matter-js';
 import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
-import { playWrong } from '../utils/levelAudio';
+import { playDrop, playThud, playWin, playWrong } from '../utils/levelAudio';
 import { DESIGN_WIDTH, DESIGN_HEIGHT } from '../utils/levelTheme';
 
 type BlockType = 'rect' | 'square' | 'triangle' | 'cylinder' | 'arch' | 'cloud' | 'star';
@@ -20,6 +20,10 @@ interface PlacedMeta {
   releasedAt: number;
   settled: boolean;
   settleAt: number;
+  /** 自由下落时的世界坐标 X（直线下落） */
+  releaseX: number;
+  /** 是否已碰过接盘或其他积木；接触后交给物理模拟平衡/滑落 */
+  hasContacted: boolean;
 }
 
 type MatterBody = Matter.Body & {
@@ -92,21 +96,43 @@ const toLocalPoint = (event: React.PointerEvent<HTMLDivElement>): { x: number; y
 };
 
 const makeBody = (spec: BlockSpec, x: number, y: number): MatterBody => {
+  // 圆形/星形摩擦系数略低，落在斜面（如三角边）时能按平衡原理滑落；
+  // 方块类高摩擦，落稳后无惯性侧滑，但悬空/落偏仍可被挤出掉落。
+  const isRoundish = spec.type === 'cylinder' || spec.type === 'star' || spec.type === 'cloud';
   const common: Matter.IChamferableBodyDefinition = {
     // 必须先以动态体创建，再在生成时 setStatic(true) 冻结；
     // 否则某些情况下 setStatic(false) 不会正确恢复质量/惯性，导致“松手不下落”。
     isStatic: false,
-    friction: spec.type === 'star' ? 0.02 : spec.type === 'cloud' ? 0.95 : 0.6,
-    restitution: spec.type === 'cloud' ? 0.32 : 0.08,
+    friction: isRoundish ? 0.28 : 0.95,
+    frictionStatic: isRoundish ? 0.35 : 1,
+    restitution: 0,
     density: spec.type === 'cloud' ? 0.0008 : spec.type === 'cylinder' ? 0.00115 : 0.001,
     inertia: Infinity,
-    frictionAir: spec.type === 'cloud' ? 0.08 : 0.015,
+    frictionAir: spec.type === 'cloud' ? 0.1 : 0.03,
     slop: 0.02
   };
 
   let body: MatterBody;
   if (spec.type === 'triangle') {
-    body = Matter.Bodies.polygon(x, y, 3, spec.w * 0.58, common) as MatterBody;
+    // 尖朝上、底边水平，与视觉 clipPath 一致；避免 Bodies.polygon(3) 默认侧向尖角导致落地异常
+    const hw = spec.w * 0.5;
+    const hh = spec.h * 0.5;
+    const triangleVerts = [
+      { x: 0, y: -hh },
+      { x: hw, y: hh },
+      { x: -hw, y: hh }
+    ];
+    const created = Matter.Bodies.fromVertices(x, y, [triangleVerts], common);
+    if (created) {
+      body = created as MatterBody;
+    } else {
+      // 备用：用旋转后的顶点直接构造平底三角
+      const r = Math.min(spec.w, spec.h) * 0.55;
+      const tip = { x: 0, y: -r };
+      const br = { x: r * Math.cos(Math.PI / 6), y: r * Math.sin(Math.PI / 6) };
+      const bl = { x: -r * Math.cos(Math.PI / 6), y: r * Math.sin(Math.PI / 6) };
+      body = Matter.Bodies.fromVertices(x, y, [[tip, br, bl]], common) as MatterBody;
+    }
   } else if (spec.type === 'cylinder' || spec.type === 'cloud') {
     body = Matter.Bodies.circle(x, y, spec.w * 0.5, common) as MatterBody;
   } else if (spec.type === 'star') {
@@ -117,6 +143,11 @@ const makeBody = (spec: BlockSpec, x: number, y: number): MatterBody => {
       chamfer: { radius: spec.type === 'arch' ? 20 : 12 }
     }) as MatterBody;
   }
+
+  // fromVertices / polygon 会重算惯性，需再次锁死旋转以保持尖朝上
+  Matter.Body.setInertia(body, Infinity);
+  Matter.Body.setAngle(body, 0);
+  Matter.Body.setAngularVelocity(body, 0);
 
   body.plugin.blockId = spec.id;
   body.plugin.blockType = spec.type;
@@ -175,11 +206,13 @@ export const Level4StackGame: React.FC = () => {
     const table = Matter.Bodies.rectangle(VIEW_W / 2, BASE_SURFACE_Y + TABLE_BODY_H / 2, BASE_WIDTH, TABLE_BODY_H, {
       isStatic: true,
       friction: 1,
-      restitution: 0.02
+      frictionStatic: 1,
+      restitution: 0
     }) as MatterBody;
     const floor = Matter.Bodies.rectangle(VIEW_W / 2, VIEW_H + 260, VIEW_W * 2, 120, {
       isStatic: true,
-      friction: 0.8,
+      friction: 1,
+      frictionStatic: 1,
       restitution: 0
     }) as MatterBody;
     const leftWall = Matter.Bodies.rectangle(-28, VIEW_H / 2, 56, VIEW_H * 1.2, { isStatic: true }) as MatterBody;
@@ -250,6 +283,7 @@ export const Level4StackGame: React.FC = () => {
 
   const onBlockSettled = () => {
     settleCountRef.current += 1;
+    playThud();
   };
 
   const releaseCurrentBlock = () => {
@@ -257,6 +291,7 @@ export const Level4StackGame: React.FC = () => {
     if (!activeId) return;
     const body = worldBodiesRef.current[activeId];
     if (!body) return;
+    playDrop();
     Matter.Body.setStatic(body, false);
     Matter.Sleeping.set(body, false);
     Matter.Body.setVelocity(body, { x: 0, y: 0 });
@@ -264,7 +299,9 @@ export const Level4StackGame: React.FC = () => {
     placedMetaRef.current[activeId] = {
       releasedAt: Date.now(),
       settled: false,
-      settleAt: 0
+      settleAt: 0,
+      releaseX: body.position.x,
+      hasContacted: false
     };
     usedCountRef.current += 1;
     setUsedCount(usedCountRef.current);
@@ -330,13 +367,23 @@ export const Level4StackGame: React.FC = () => {
             return Boolean(id && placedMetaRef.current[id]);
           });
           const releasedBodySet = new Set<MatterBody>(releasedBodies);
-          const settledBodySet = new Set<MatterBody>(
-            releasedBodies.filter((body) => {
-              const id = body.plugin.blockId;
-              return Boolean(id && placedMetaRef.current[id]?.settled);
-            })
-          );
+          const baseBody = movingBaseRef.current;
           const carriedBodies = new Set<MatterBody>();
+
+          // 本帧有支撑接触的积木（接盘或其他已释放积木）
+          const contactingSupport = new Set<MatterBody>();
+          if (baseBody && engineRef.current) {
+            for (const pair of engineRef.current.pairs.list) {
+              if (!pair.isActive) continue;
+              const a = pair.bodyA as MatterBody;
+              const b = pair.bodyB as MatterBody;
+              const aReleased = releasedBodySet.has(a);
+              const bReleased = releasedBodySet.has(b);
+
+              if ((a === baseBody && bReleased) || (aReleased && bReleased)) contactingSupport.add(b);
+              if ((b === baseBody && aReleased) || (aReleased && bReleased)) contactingSupport.add(a);
+            }
+          }
 
           let minTop = BASE_SURFACE_Y;
           let stableBodies = 0;
@@ -344,13 +391,34 @@ export const Level4StackGame: React.FC = () => {
           let settledReleasedBodies = 0;
 
           for (const body of allBodies) {
+            const meta = body.plugin.blockId ? placedMetaRef.current[body.plugin.blockId] : undefined;
+
             if (!body.isStatic) {
               dynamicBodies += 1;
               Matter.Body.setAngle(body, 0);
               Matter.Body.setAngularVelocity(body, 0);
-              // 始终保持垂直下落轨迹（不允许横向漂移）
-              if (Math.abs(body.velocity.x) > 0.0001) {
+            }
+
+            if (meta) {
+              if (contactingSupport.has(body)) {
+                meta.hasContacted = true;
+              }
+
+              if (!meta.hasContacted) {
+                // 尚未触碰：锁定水平位置，保持垂直下落
+                if (Math.abs(body.position.x - meta.releaseX) > 0.001) {
+                  Matter.Body.setPosition(body, { x: meta.releaseX, y: body.position.y });
+                }
                 Matter.Body.setVelocity(body, { x: 0, y: body.velocity.y });
+              } else {
+                // 已接触：交给物理做平衡判定。
+                // 仅清除“落稳后的残余惯性滑动”——垂直方向已几乎静止、且横向速度很小；
+                // 斜面/落偏产生的持续侧向推力通常更大，不会被误杀，从而仍可滑落。
+                const vy = body.velocity.y;
+                const vx = body.velocity.x;
+                if (Math.abs(vy) <= 0.22 && Math.abs(vx) <= 0.5) {
+                  Matter.Body.setVelocity(body, { x: 0, y: vy });
+                }
               }
             }
 
@@ -358,12 +426,11 @@ export const Level4StackGame: React.FC = () => {
               triggerCollapseReset();
             }
 
-            const meta = body.plugin.blockId ? placedMetaRef.current[body.plugin.blockId] : undefined;
             if (meta && !meta.settled) {
               minTop = Math.min(minTop, body.bounds.min.y);
               const speed = body.speed;
               if (!body.isStatic && speed <= STABLE_SPEED) stableBodies += 1;
-              if (speed <= 0.14 && Math.abs(body.velocity.y) <= 0.12) {
+              if (meta.hasContacted && speed <= 0.14 && Math.abs(body.velocity.y) <= 0.12) {
                 if (!meta.settleAt) meta.settleAt = now;
                 if (now - meta.settleAt > 380) {
                   meta.settled = true;
@@ -379,33 +446,29 @@ export const Level4StackGame: React.FC = () => {
             }
           }
 
-          // 底座水平移动时：把“与底座接触并连通”的整叠积木一起平移，保持整体造型与高度关系。
-          if (Math.abs(baseDeltaX) > 0.001 && movingBaseRef.current && releasedBodySet.size > 0) {
-            const collisionPairs = engineRef.current.pairs.list;
+          // 接盘水平移动时：平移与接盘连通的整叠积木（保留相对运动，如正在滑落的块）
+          if (Math.abs(baseDeltaX) > 0.001 && baseBody && releasedBodySet.size > 0) {
             const adjacency = new Map<MatterBody, Set<MatterBody>>();
             const queue: MatterBody[] = [];
-            const baseBody = movingBaseRef.current;
 
             const addEdge = (a: MatterBody, b: MatterBody) => {
               if (!adjacency.has(a)) adjacency.set(a, new Set<MatterBody>());
               adjacency.get(a)?.add(b);
             };
 
-            for (const pair of collisionPairs) {
+            for (const pair of engineRef.current.pairs.list) {
               if (!pair.isActive) continue;
               const a = pair.bodyA as MatterBody;
               const b = pair.bodyB as MatterBody;
-              const aIsBase = a === baseBody;
-              const bIsBase = b === baseBody;
               const aReleased = releasedBodySet.has(a);
               const bReleased = releasedBodySet.has(b);
 
-              if (aIsBase && bReleased) {
+              if (a === baseBody && bReleased) {
                 carriedBodies.add(b);
                 queue.push(b);
                 continue;
               }
-              if (bIsBase && aReleased) {
+              if (b === baseBody && aReleased) {
                 carriedBodies.add(a);
                 queue.push(a);
                 continue;
@@ -457,6 +520,7 @@ export const Level4StackGame: React.FC = () => {
             if (stableStartRef.current === null) stableStartRef.current = now;
             if (now - stableStartRef.current >= 2000) {
               finishedRef.current = true;
+              playWin();
               const stars = collapseCountRef.current === 0 && usedCountRef.current <= 12 ? 3 : usedCountRef.current <= 16 ? 2 : 1;
               completeLevel({ stars, orangesCollected: stars, orangeTotal: 3 });
             }
@@ -501,7 +565,7 @@ export const Level4StackGame: React.FC = () => {
       />
 
       <LevelTopBar
-        title="☁️ 积木云端城"
+        title="☁️ 云端小塔"
         onPause={() => setGameplayPaused(true)}
         stats={[
           { label: '高度', value: `${Math.floor(heightPercent)}%` },
@@ -541,8 +605,9 @@ export const Level4StackGame: React.FC = () => {
         const palette = body.plugin.palette ?? 'mist';
         const bodyW = body.bounds.max.x - body.bounds.min.x;
         const bodyH = body.bounds.max.y - body.bounds.min.y;
-        const left = body.position.x - bodyW / 2;
-        const top = body.position.y - bodyH / 2 - STAGE_TOP;
+        // 用物理包围盒定位，避免三角形等非对称形状质心与几何中心偏移造成错位
+        const left = body.bounds.min.x;
+        const top = body.bounds.min.y - STAGE_TOP;
         const cloudSquash = type === 'cloud' ? clamp(1 - Math.abs(body.velocity.y) * 0.08, 0.82, 1) : 1;
 
         let shapeStyle: React.CSSProperties = {
@@ -553,7 +618,7 @@ export const Level4StackGame: React.FC = () => {
           shapeStyle.borderRadius = 10;
         } else if (type === 'triangle') {
           shapeStyle = {
-            clipPath: 'polygon(50% 6%, 5% 95%, 95% 95%)',
+            clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
             background: `linear-gradient(180deg, ${BASE_COLORS[palette].grain}, ${BASE_COLORS[palette].base})`
           };
         } else if (type === 'cylinder') {

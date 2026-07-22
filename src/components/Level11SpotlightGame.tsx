@@ -1,131 +1,251 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
-import { playCorrect, playWin, playWrong } from '../utils/levelAudio';
+import { playCorrect, playSoftClick, playSparkle, playWin, playWrong } from '../utils/levelAudio';
 
-const EMOJIS = ['🐱', '🐶', '🐰', '🦊', '🐻', '🐼', '🐨', '🦁', '🐯', '🐸', '🐷', '🐮'];
-const TARGET = 6;
-const MAX_MISS = 3;
+type Hotspot = { x: number; y: number; w: number; h: number };
 
-type Round = { base: string[]; wrongIdx: number; wrongEmoji: string };
+/** 热点：相对整张图片宽高的百分比矩形 { x, y, w, h } */
+const STAGES = [
+  {
+    src: '/images/找3.webp',
+    label: '找到数字 3',
+    target: '3',
+    hotspots: [{ x: 58.8, y: 56.2, w: 8, h: 8 }] as Hotspot[]
+  },
+  {
+    src: '/images/找5.webp',
+    label: '找到数字 5',
+    target: '5',
+    hotspots: [{ x: 43.8, y: 38.1, w: 8, h: 8 }] as Hotspot[]
+  },
+  {
+    src: '/images/找6.webp',
+    label: '找到数字 6',
+    target: '6',
+    hotspots: [{ x: 32.7, y: 64.6, w: 8, h: 8 }] as Hotspot[]
+  }
+];
 
-const makeRound = (): Round => {
-  const baseEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-  const base = Array.from({ length: 16 }, () => baseEmoji);
-  const wrongIdx = Math.floor(Math.random() * 16);
-  let wrongEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-  while (wrongEmoji === baseEmoji) wrongEmoji = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
-  return { base, wrongIdx, wrongEmoji };
+const STAGE_TIME = 30;
+const MAX_STAGE_MISS = 10;
+
+const hitHotspot = (px: number, py: number, spots: Hotspot[]) =>
+  spots.some((h) => px >= h.x && px <= h.x + h.w && py >= h.y && py <= h.y + h.h);
+
+/** 用 clientWidth/Height（设计稿坐标）；勿用 getBoundingClientRect 直接当布局尺寸（外层有 scale） */
+const getContentBox = (wrap: HTMLElement, img: HTMLImageElement) => {
+  const ww = wrap.clientWidth;
+  const wh = wrap.clientHeight;
+  const nw = img.naturalWidth;
+  const nh = img.naturalHeight;
+  if (ww <= 0 || wh <= 0 || !nw || !nh) return null;
+  const scale = Math.min(ww / nw, wh / nh);
+  const width = nw * scale;
+  const height = nh * scale;
+  return {
+    left: (ww - width) / 2,
+    top: (wh - height) / 2,
+    width,
+    height
+  };
+};
+
+const contentPercent = (
+  wrap: HTMLElement,
+  img: HTMLImageElement,
+  clientX: number,
+  clientY: number
+): { px: number; py: number } | null => {
+  const box = getContentBox(wrap, img);
+  if (!box) return null;
+  const wr = wrap.getBoundingClientRect();
+  if (wr.width <= 0 || wr.height <= 0) return null;
+  const localX = (clientX - wr.left) * (wrap.clientWidth / wr.width);
+  const localY = (clientY - wr.top) * (wrap.clientHeight / wr.height);
+  const x = localX - box.left;
+  const y = localY - box.top;
+  if (x < 0 || y < 0 || x > box.width || y > box.height) return null;
+  return { px: (x / box.width) * 100, py: (y / box.height) * 100 };
 };
 
 export const Level11SpotlightGame: React.FC = () => {
-  const { status, currentLevelId, gameplayPaused, setGameplayPaused, restartCurrentLevel, goLevelSelect, completeLevel, adminMode, runId } =
-    useGameStore();
+  const {
+    status,
+    currentLevelId,
+    gameplayPaused,
+    setGameplayPaused,
+    restartCurrentLevel,
+    goLevelSelect,
+    completeLevel,
+    adminMode,
+    testCompleteLevel,
+    runId
+  } = useGameStore();
   const isActive = status === 'playing' && currentLevelId === 11;
 
-  const [round, setRound] = useState<Round>(() => makeRound());
-  const [done, setDone] = useState(0);
-  const [misses, setMisses] = useState(0);
+  const [stageIdx, setStageIdx] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(STAGE_TIME);
+  const [stageMisses, setStageMisses] = useState(0);
+  const [totalMisses, setTotalMisses] = useState(0);
   const [ended, setEnded] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const [flash, setFlash] = useState<number | null>(null);
+  const [stageFailed, setStageFailed] = useState(false);
+  const [failReason, setFailReason] = useState<'time' | 'miss'>('time');
+  const [flashWrong, setFlashWrong] = useState(false);
+  const [flashOk, setFlashOk] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const endedRef = useRef(false);
 
-  const bottom = useMemo(() => {
-    const g = [...round.base];
-    g[round.wrongIdx] = round.wrongEmoji;
-    return g;
-  }, [round]);
+  const stage = STAGES[stageIdx];
 
-  const starsPreview = useMemo(() => {
-    if (failed) return misses <= 1 ? 1 : 0;
-    if (misses === 0) return 3;
-    if (misses <= 2) return 2;
-    return 1;
-  }, [failed, misses]);
+  const resetStage = useCallback((idx: number) => {
+    setStageIdx(idx);
+    setTimeLeft(STAGE_TIME);
+    setStageMisses(0);
+    setStageFailed(false);
+    setFailReason('time');
+    setFlashWrong(false);
+    setFlashOk(false);
+  }, []);
 
   const succeed = useCallback(() => {
+    if (endedRef.current) return;
+    endedRef.current = true;
     setEnded(true);
     playWin();
-    window.setTimeout(() => completeLevel({ stars: starsPreview, orangesCollected: starsPreview, orangeTotal: 3 }), 280);
-  }, [completeLevel, starsPreview]);
+    const stars = totalMisses === 0 ? 3 : totalMisses <= 5 ? 2 : 1;
+    window.setTimeout(() => completeLevel({ stars, orangesCollected: stars, orangeTotal: 3 }), 280);
+  }, [completeLevel, totalMisses]);
 
   useEffect(() => {
     if (!isActive) return;
-    setRound(makeRound());
-    setDone(0);
-    setMisses(0);
+    endedRef.current = false;
+    setTotalMisses(0);
     setEnded(false);
-    setFailed(false);
-    setFlash(null);
-  }, [isActive, runId]);
+    resetStage(0);
+  }, [isActive, runId, resetStage]);
 
-  const tap = (i: number) => {
-    if (!isActive || gameplayPaused || ended || failed) return;
-    if (i === round.wrongIdx) {
-      playCorrect();
-      setFlash(i);
-      const nd = done + 1;
-      setDone(nd);
-      if (nd >= TARGET) window.setTimeout(succeed, 400);
-      else window.setTimeout(() => {
-        setRound(makeRound());
-        setFlash(null);
-      }, 500);
-    } else {
+  useEffect(() => {
+    if (!isActive || gameplayPaused || ended || stageFailed || flashOk) return;
+    if (timeLeft <= 0) {
       playWrong();
-      setMisses((m) => {
-        const nm = m + 1;
-        if (nm >= MAX_MISS) setFailed(true);
-        return nm;
-      });
+      setFailReason('time');
+      setStageFailed(true);
+      return;
     }
+    const t = window.setTimeout(() => setTimeLeft((v) => v - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [isActive, gameplayPaused, ended, stageFailed, flashOk, timeLeft]);
+
+  const registerMiss = () => {
+    playWrong();
+    setFlashWrong(true);
+    window.setTimeout(() => setFlashWrong(false), 280);
+    setStageMisses((m) => {
+      const next = m + 1;
+      if (next >= MAX_STAGE_MISS) {
+        setFailReason('miss');
+        setStageFailed(true);
+      }
+      return next;
+    });
+    setTotalMisses((m) => m + 1);
+  };
+
+  const onImageClick = (e: React.MouseEvent<HTMLElement>) => {
+    if (!isActive || gameplayPaused || ended || stageFailed || flashOk) return;
+    const el = imgRef.current;
+    const wrap = wrapRef.current;
+    if (!el || !wrap) return;
+    const pos = contentPercent(wrap, el, e.clientX, e.clientY);
+    if (!pos) {
+      registerMiss();
+      return;
+    }
+
+    if (hitHotspot(pos.px, pos.py, stage.hotspots)) {
+      playSparkle();
+      playCorrect();
+      setFlashOk(true);
+      window.setTimeout(() => {
+        if (stageIdx + 1 >= STAGES.length) {
+          succeed();
+        } else {
+          resetStage(stageIdx + 1);
+        }
+      }, 450);
+    } else {
+      registerMiss();
+    }
+  };
+
+  const retryStage = () => {
+    if (!isActive || ended) return;
+    resetStage(stageIdx);
   };
 
   if (!isActive) return null;
 
-  const renderGrid = (cells: string[], clickable: boolean) => (
-    <div className="grid grid-cols-4 gap-1.5 p-3 rounded-2xl bg-white/85 border border-white shadow-md">
-      {cells.map((e, i) => (
-        <button
-          key={i}
-          type="button"
-          disabled={!clickable}
-          onClick={() => tap(i)}
-          className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl ${
-            clickable ? 'active:scale-95 bg-white/90' : 'bg-[#e3f2fc]/80'
-          } ${flash === i ? 'ring-4 ring-[#3aab8e]' : ''}`}
-        >
-          {e}
-        </button>
-      ))}
-    </div>
-  );
-
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto flex flex-col overflow-hidden" style={{ background: FRESH.bgGrad }}>
       <LevelTopBar
-        title="🔍 找不同"
+        title="🔍 眼力大作战"
         onPause={() => setGameplayPaused(true)}
-        hint="下图有一个格子与上图不同，点出来"
+        hint={stage.label}
         stats={[
-          { label: '进度', value: `${done}/${TARGET}` },
-          { label: '失误', value: `${misses}/${MAX_MISS}` },
-          { label: '⭐', value: `${starsPreview}/3` }
+          { label: '关', value: `${Math.min(stageIdx + 1, STAGES.length)}/${STAGES.length}` },
+          { label: '倒计时', value: `${timeLeft}s` },
+          { label: '失误', value: `${stageMisses}/${MAX_STAGE_MISS}` }
         ]}
       />
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-xs text-[#5a7a92]">参考图</p>
-        {renderGrid(round.base, false)}
-        <p className="text-xs text-[#5a7a92]">找出不同 👇</p>
-        {renderGrid(bottom, true)}
+
+      <div ref={wrapRef} className="flex-1 min-h-0 relative overflow-hidden" onClick={onImageClick}>
+        <img
+          ref={imgRef}
+          src={stage.src}
+          alt={stage.label}
+          draggable={false}
+          className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
+          style={{
+            filter: flashWrong ? 'brightness(0.75) sepia(0.4) hue-rotate(-20deg)' : undefined,
+            outline: flashOk ? `4px solid ${FRESH.success}` : undefined,
+            outlineOffset: -4
+          }}
+        />
+        {flashWrong && <div className="absolute inset-0 pointer-events-none bg-[#c75b7a]/18" />}
       </div>
-      {failed && (
-        <div className="absolute inset-0 z-[90] bg-[#0a1628]/35 flex items-center justify-center px-10">
-          <div className="w-full rounded-3xl bg-white p-6 text-center space-y-3">
-            <button type="button" onClick={restartCurrentLevel} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#4a9fd8] to-[#3aab8e] text-white font-semibold">再来一局</button>
-            <button type="button" onClick={goLevelSelect} className="w-full py-3 rounded-xl bg-[#e3f2fc]">返回关卡</button>
+
+      {stageFailed && (
+        <div className="absolute inset-0 z-[90] bg-[#0a1628]/45 flex items-center justify-center px-10">
+          <div className="w-full rounded-3xl bg-white p-5 text-center space-y-3">
+            <h3 className="text-lg font-bold" style={{ color: FRESH.text }}>
+              {failReason === 'miss' ? '失误次数用完' : '时间到了'}
+            </h3>
+            <p className="text-sm" style={{ color: FRESH.textMuted }}>
+              {failReason === 'miss'
+                ? `本关失误已达 ${MAX_STAGE_MISS} 次，没能找到数字 ${stage.target}`
+                : `没能在 ${STAGE_TIME} 秒内找到数字 ${stage.target}`}
+            </p>
+            <button type="button" onClick={retryStage} className="w-full py-2 rounded-xl bg-[#f9dccf] font-semibold">
+              重试本关
+            </button>
+            <button type="button" onClick={restartCurrentLevel} className="w-full py-2 rounded-xl bg-[#e3f2fc] font-semibold">
+              从头再来
+            </button>
+            <button type="button" onClick={goLevelSelect} className="w-full py-2 rounded-xl bg-white border border-[#d6ecf8]">
+              返回关卡
+            </button>
           </div>
+        </div>
+      )}
+
+      {adminMode && (
+        <div className="absolute right-4 top-36 z-50">
+          <button type="button" onClick={testCompleteLevel} className="px-3 py-2 bg-black/35 text-white rounded-full text-xs">
+            测试通关
+          </button>
         </div>
       )}
     </div>

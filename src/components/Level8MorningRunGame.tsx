@@ -6,24 +6,34 @@ import { playCorrect, playPop, playWin, playWrong } from '../utils/levelAudio';
 
 type Peg = number[];
 
+/** 两小关：3 盘 → 4 盘 */
+const STAGES = [
+  { disks: 3, start: [[3, 2, 1], [], []] as Peg[] },
+  { disks: 4, start: [[4, 3, 2, 1], [], []] as Peg[] }
+];
+
 const clonePegs = (p: Peg[]) => p.map((peg) => [...peg]);
 
-const isWin = (pegs: Peg[]) => pegs[2].length === 3 && pegs[2].every((_, i, arr) => arr[i] === 3 - i);
+const isWin = (pegs: Peg[], disks: number) =>
+  pegs[2].length === disks && pegs[2].every((v, i) => v === disks - i);
 
 const canPlace = (disk: number, to: Peg) => to.length === 0 || to[to.length - 1] > disk;
 
 export const Level8MorningRunGame: React.FC = () => {
-  const { status, currentLevelId, gameplayPaused, setGameplayPaused, restartCurrentLevel, goLevelSelect, completeLevel, adminMode, runId } =
+  const { status, currentLevelId, gameplayPaused, setGameplayPaused, completeLevel, adminMode, runId } =
     useGameStore();
   const isActive = status === 'playing' && currentLevelId === 8;
 
-  const [pegs, setPegs] = useState<Peg[]>(() => [[3, 2, 1], [], []]);
+  const [stage, setStage] = useState(0);
+  const [pegs, setPegs] = useState<Peg[]>(() => clonePegs(STAGES[0].start));
   const [selected, setSelected] = useState<number | null>(null);
   const [moves, setMoves] = useState(0);
   const [ended, setEnded] = useState(false);
   const [msg, setMsg] = useState('点选柱子再点目标，大盘不能压小盘');
 
-  const starsPreview = useMemo(() => (moves <= 7 ? 3 : moves <= 10 ? 2 : 1), [moves]);
+  const disks = STAGES[stage]?.disks ?? 3;
+  // 3 盘最优 7 + 4 盘最优 15 ≈ 22；宽松给星
+  const starsPreview = useMemo(() => (moves <= 26 ? 3 : moves <= 36 ? 2 : 1), [moves]);
 
   const succeed = useCallback(() => {
     setEnded(true);
@@ -33,11 +43,12 @@ export const Level8MorningRunGame: React.FC = () => {
 
   useEffect(() => {
     if (!isActive) return;
-    setPegs([[3, 2, 1], [], []]);
+    setStage(0);
+    setPegs(clonePegs(STAGES[0].start));
     setSelected(null);
     setMoves(0);
     setEnded(false);
-    setMsg('点选柱子再点目标，大盘不能压小盘');
+    setMsg('第 1 关：三盘 · 点选柱子再点目标');
   }, [isActive, runId]);
 
   const tapPeg = (pi: number) => {
@@ -64,10 +75,21 @@ export const Level8MorningRunGame: React.FC = () => {
     setPegs((prev) => {
       const next = clonePegs(prev);
       next[pi].push(next[selected!].pop()!);
-      if (isWin(next)) {
+      if (isWin(next, disks)) {
         playCorrect();
-        setMsg('全部移到了右侧！');
-        window.setTimeout(succeed, 400);
+        if (stage + 1 >= STAGES.length) {
+          setMsg('全部移到了右侧！');
+          window.setTimeout(succeed, 400);
+        } else {
+          const ns = stage + 1;
+          setMsg(`第 ${stage + 1} 关完成！进入 ${STAGES[ns].disks} 盘挑战`);
+          window.setTimeout(() => {
+            setStage(ns);
+            setPegs(clonePegs(STAGES[ns].start));
+            setSelected(null);
+            setMsg(`第 ${ns + 1} 关：${STAGES[ns].disks} 盘 · 点选柱子再点目标`);
+          }, 500);
+        }
       }
       return next;
     });
@@ -80,12 +102,13 @@ export const Level8MorningRunGame: React.FC = () => {
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto flex flex-col overflow-hidden" style={{ background: FRESH.bgGrad }}>
       <LevelTopBar
-        title="🗼 汉诺塔"
+        title="🗼 课后移塔"
         onPause={() => setGameplayPaused(true)}
         hint={msg}
         stats={[
-          { label: '步数', value: `${moves}（最少7步）` },
-          { label: '⭐', value: `${starsPreview}/3` }
+          { label: '小关', value: `${Math.min(stage + 1, STAGES.length)}/${STAGES.length}` },
+          { label: '圆盘', value: String(disks) },
+          { label: '步数', value: String(moves) }
         ]}
       />
       <div className="flex-1 min-h-0 flex items-end justify-center gap-6 px-4 pb-16">
@@ -94,19 +117,19 @@ export const Level8MorningRunGame: React.FC = () => {
             key={pi}
             type="button"
             onClick={() => tapPeg(pi)}
-            className={`relative w-28 h-56 flex flex-col-reverse items-center pb-2 transition-transform ${
+            className={`relative w-28 h-64 flex flex-col-reverse items-center pb-2 transition-transform ${
               selected === pi ? 'scale-105' : ''
             }`}
           >
             <div className="absolute bottom-0 w-full h-3 rounded-full bg-[#ccb494]" />
-            <div className={`absolute bottom-3 w-2 h-48 rounded-full ${selected === pi ? 'bg-[#3aab8e]' : 'bg-[#ccb494]/70'}`} />
+            <div className={`absolute bottom-3 w-2 h-52 rounded-full ${selected === pi ? 'bg-[#3aab8e]' : 'bg-[#ccb494]/70'}`} />
             {peg.map((disk) => (
               <div
                 key={`${pi}-${disk}`}
                 className="relative z-10 rounded-xl border-2 border-white shadow-md mb-1"
                 style={{
-                  width: 36 + disk * 22,
-                  height: 22,
+                  width: 28 + disk * 18,
+                  height: disks === 4 ? 18 : 22,
                   background: `linear-gradient(145deg, ${PALETTE[disk % PALETTE.length]}, ${PALETTE[(disk + 1) % PALETTE.length]}99)`
                 }}
               />
@@ -115,6 +138,13 @@ export const Level8MorningRunGame: React.FC = () => {
           </button>
         ))}
       </div>
+      {adminMode && (
+        <div className="absolute right-4 top-36 z-50">
+          <button type="button" onClick={() => completeLevel({ stars: 3, orangesCollected: 3, orangeTotal: 3 })} className="px-3 py-2 bg-black/35 text-white rounded-full text-xs">
+            测试通关
+          </button>
+        </div>
+      )}
     </div>
   );
 };

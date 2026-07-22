@@ -1,18 +1,22 @@
 import React, { useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { DESIGN_HEIGHT, FRESH } from '../utils/levelTheme';
+import { unlockAudio } from '../utils/audioManager';
+import { AccountSyncModal } from './AccountSyncModal';
 
-const HOME_COVER = '/images/首页封面.png';
+const HOME_COVER = '/images/首页封面.webp';
 
 /** 750×1334 设计稿：slogan 约在 y≈1218，按钮底边与其留空 */
 const START_BTN_BOTTOM_PX = Math.round(DESIGN_HEIGHT * 0.165);
 
 export const HomeScreen: React.FC = () => {
-  const { status, goLevelSelect, showAdminLogin, showAdminLoginModal, loginAdmin } = useGameStore();
+  const { status, goLevelSelect, accountNickname, adminMode, showAdminLogin, showAdminLoginModal, loginAdmin, hydrateCloudSave } =
+    useGameStore();
   const timerRef = useRef<number | null>(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loginOpen, setLoginOpen] = useState(false);
 
   if (status !== 'home') return null;
 
@@ -43,7 +47,13 @@ export const HomeScreen: React.FC = () => {
   const enterGame = (e: React.MouseEvent | React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    goLevelSelect();
+    unlockAudio();
+    if (accountNickname || adminMode) {
+      void hydrateCloudSave();
+      goLevelSelect();
+      return;
+    }
+    setLoginOpen(true);
   };
 
   return (
@@ -125,6 +135,8 @@ export const HomeScreen: React.FC = () => {
           </div>
         </div>
       )}
+
+      <AccountSyncModal open={loginOpen} required onClose={() => setLoginOpen(false)} />
     </div>
   );
 };

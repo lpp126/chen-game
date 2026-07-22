@@ -408,7 +408,7 @@ export const Level6BagOrganizeGame: React.FC = () => {
     <div className="absolute inset-0 z-30 pointer-events-auto overflow-hidden bg-[#f6efe4]">
       <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, #f8f3ea 0%, #f2e7d6 100%)' }} />
       <LevelTopBar
-        title="✏️ 第一天上学啦"
+        title="✏️ 入学收纳"
         onPause={() => setGameplayPaused(true)}
         stats={[
           { label: '⏱', value: `${elapsed}s` },

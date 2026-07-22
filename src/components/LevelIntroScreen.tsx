@@ -4,8 +4,8 @@ import { LEVELS } from '../data/levels';
 import { LEVEL_INTRO_TEXTS } from '../data/levelIntroTexts';
 
 const EXIT_DURATION_MS = 600;
-const AUTO_ENTER_START_MS = 8600;
-const LINE_DELAYS_MS = [500, 1800, 2900, 4000];
+const AUTO_ENTER_START_MS = 10500;
+const LINE_DELAYS_MS = [400, 1400, 2500, 3700, 4900];
 
 export const LevelIntroScreen: React.FC = () => {
   const { status, currentLevelId, proceedToStartScreen } = useGameStore();

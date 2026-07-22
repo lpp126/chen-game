@@ -6,27 +6,45 @@ import { playCorrect, playPop, playWin, playWrong } from '../utils/levelAudio';
 
 const TARGET_ROUNDS = 5;
 
+/** 常见 24 点搭配；正确解法中间结果均为整数，不含小数/分数 */
 const SOLVABLE_POOL: number[][] = [
   [1, 2, 3, 4],
-  [3, 3, 8, 8],
-  [1, 5, 5, 5],
-  [4, 1, 8, 7],
-  [2, 2, 10, 10],
-  [6, 6, 6, 6],
-  [2, 3, 4, 5],
+  [1, 1, 2, 8],
+  [2, 2, 2, 6],
+  [2, 3, 4, 6],
+  [3, 3, 4, 8],
+  [4, 4, 4, 3],
+  [5, 5, 5, 5],
+  [6, 6, 6, 2],
+  [8, 8, 2, 2],
   [1, 3, 4, 6],
-  [8, 3, 3, 2],
-  [5, 5, 5, 1],
-  [7, 7, 3, 3],
-  [4, 4, 7, 7]
+  [2, 4, 6, 8],
+  [3, 4, 5, 6],
+  [2, 2, 7, 8], // 7×2+8+2
+  [5, 5, 2, 4], // (5+5)×2+4
+  [1, 3, 6, 8], // 8×6÷(3-1)
+  [2, 4, 7, 8], // 8×(7-4)×(2÷2)
+  [1, 1, 5, 8], // 8×(5-(1+1))
+  [5, 5, 5, 1] // (5×5)-(5÷5)
 ];
 
 type Op = '+' | '-' | '×' | '÷';
 type Step = 'num1' | 'op' | 'num2';
 
-const pickRandomPuzzle = () => SOLVABLE_POOL[Math.floor(Math.random() * SOLVABLE_POOL.length)];
+const shuffleInPlace = <T,>(arr: T[]): T[] => {
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
 
-const buildRoundSet = () => Array.from({ length: TARGET_ROUNDS }, () => [...pickRandomPuzzle()]);
+/** 无放回随机抽 TARGET_ROUNDS 组，避免两小关出一模一样的题 */
+const buildRoundSet = (): number[][] => {
+  const pool = SOLVABLE_POOL.map((p) => [...p]);
+  shuffleInPlace(pool);
+  return pool.slice(0, TARGET_ROUNDS).map((nums) => shuffleInPlace([...nums]));
+};
 
 const calc = (a: number, b: number, op: Op): number | null => {
   switch (op) {
@@ -38,7 +56,12 @@ const calc = (a: number, b: number, op: Op): number | null => {
       return a * b;
     case '÷':
       if (Math.abs(b) < 1e-9) return null;
-      return a / b;
+      {
+        const q = a / b;
+        // 只允许整除，避免出现小数/分数中间结果
+        if (!Number.isInteger(q)) return null;
+        return q;
+      }
     default:
       return null;
   }
@@ -65,14 +88,15 @@ export const Level15Match3Game: React.FC = () => {
   const starsPreview = useMemo(() => (mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1), [mistakes]);
 
   const resetRoundState = useCallback((r: number, set?: number[][]) => {
-    const nums = set ? [...set[r]] : [...pickRandomPuzzle()];
+    const source = set ?? roundSet;
+    const nums = [...(source[r] ?? SOLVABLE_POOL[0])];
     setCards(nums);
     setStep('num1');
     setFirstIdx(null);
     setPendingOp(null);
     setExpr('');
     setMsg(null);
-  }, []);
+  }, [roundSet]);
 
   const freshAllRounds = useCallback(() => {
     const next = buildRoundSet();
@@ -178,13 +202,12 @@ export const Level15Match3Game: React.FC = () => {
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto flex flex-col overflow-hidden" style={{ background: FRESH.bgGrad }}>
       <LevelTopBar
-        title="🃏 速算24点"
+        title="🃏 竞赛二十四点"
         onPause={() => setGameplayPaused(true)}
         hint={msg ?? `${stepHint} · 合并直到剩一张等于 24`}
         stats={[
           { label: '轮', value: `${Math.min(round + 1, TARGET_ROUNDS)}/${TARGET_ROUNDS}` },
-          { label: '失误', value: String(mistakes) },
-          { label: '⭐', value: `${starsPreview}/3` }
+          { label: '失误', value: String(mistakes) }
         ]}
       />
       <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-5 gap-5">

@@ -11,15 +11,34 @@ interface LevelTopBarProps {
   extra?: React.ReactNode;
   /** 第 1 关：不遮挡 Phaser 下落轨迹 */
   variant?: 'default' | 'minimal';
+  /** 统计放在标题与暂停按钮之间（单行紧凑） */
+  statsInline?: boolean;
 }
 
 export { LEVEL_TOP_RESERVED } from '../utils/levelTheme';
 
-export const LevelTopBar: React.FC<LevelTopBarProps> = ({ title, stats, onPause, hint, extra, variant = 'default' }) => {
+export const LevelTopBar: React.FC<LevelTopBarProps> = ({
+  title,
+  stats,
+  onPause,
+  hint,
+  extra,
+  variant = 'default',
+  statsInline = false
+}) => {
   const minimal = variant === 'minimal';
   const panelClass = minimal
     ? 'rounded-[1.15rem] bg-white/20 backdrop-blur-[2px] border border-white/35 shadow-none'
     : hudGlass;
+
+  const statPills = stats.map((s) => (
+    <span key={s.label} className={hudStatPill}>
+      <span className="text-xs" style={{ color: FRESH.textMuted }}>
+        {s.label}
+      </span>
+      <span className="font-semibold">{s.value}</span>
+    </span>
+  ));
 
   return (
   <header
@@ -28,9 +47,10 @@ export const LevelTopBar: React.FC<LevelTopBarProps> = ({ title, stats, onPause,
   >
     <div className={`${panelClass} px-3.5 py-2.5`}>
       <div className="flex items-center gap-2.5">
-        <p className={`flex-1 min-w-0 ${mobileTextTitle} font-bold truncate leading-tight`} style={{ color: FRESH.text }}>
+        <p className={`min-w-0 ${statsInline ? 'shrink' : 'flex-1'} ${mobileTextTitle} font-bold truncate leading-tight`} style={{ color: FRESH.text }}>
           {title}
         </p>
+        {statsInline && stats.length > 0 && <div className="flex flex-1 flex-wrap items-center justify-center gap-2">{statPills}</div>}
         <button
           type="button"
           onClick={(e) => {
@@ -44,17 +64,8 @@ export const LevelTopBar: React.FC<LevelTopBarProps> = ({ title, stats, onPause,
         </button>
       </div>
 
-      {stats.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
-          {stats.map((s) => (
-            <span key={s.label} className={hudStatPill}>
-              <span className="text-xs" style={{ color: FRESH.textMuted }}>
-                {s.label}
-              </span>
-              <span className="font-semibold">{s.value}</span>
-            </span>
-          ))}
-        </div>
+      {!statsInline && stats.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">{statPills}</div>
       )}
 
       {hint && (

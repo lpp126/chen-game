@@ -1,163 +1,219 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH, PALETTE } from '../utils/levelTheme';
-import { playCorrect, playPop, playWin, playWrong } from '../utils/levelAudio';
+import { playCorrect, playPop, playSwipe, playWin, playWrong } from '../utils/levelAudio';
 
-type GraphLevel = {
-  title: string;
-  hint: string;
-  nodeCount: number;
-  edges: Record<number, number[]>;
-  pos: Record<number, { x: number; y: number }>;
-};
+type Stage = { hitsNeeded: number; intervalMs: number; litMs: number; label: string };
 
-const LEVELS: GraphLevel[] = [
-  {
-    title: '入门六连',
-    hint: '6 点一笔连完',
-    nodeCount: 6,
-    edges: { 0: [1, 3], 1: [0, 2, 4], 2: [1, 5], 3: [0, 4], 4: [1, 3, 5], 5: [2, 4] },
-    pos: { 0: { x: 80, y: 60 }, 1: { x: 180, y: 60 }, 2: { x: 280, y: 60 }, 3: { x: 80, y: 160 }, 4: { x: 180, y: 160 }, 5: { x: 280, y: 160 } }
-  },
-  {
-    title: '七环挑战',
-    hint: '7 点，中心与四角相连',
-    nodeCount: 7,
-    edges: { 0: [1, 3], 1: [0, 2, 4], 2: [1, 5], 3: [0, 4, 6], 4: [1, 3, 5, 6], 5: [2, 4], 6: [3, 4] },
-    pos: { 0: { x: 70, y: 50 }, 1: { x: 180, y: 40 }, 2: { x: 290, y: 50 }, 3: { x: 50, y: 150 }, 4: { x: 180, y: 130 }, 5: { x: 310, y: 150 }, 6: { x: 180, y: 210 } }
-  },
-  {
-    title: '八阵迷宫',
-    hint: '8 点双行网格，竖线可穿',
-    nodeCount: 8,
-    edges: { 0: [1, 7], 1: [0, 2, 6], 2: [1, 3, 5], 3: [2, 4], 4: [3, 5], 5: [2, 4, 6], 6: [1, 5, 7], 7: [0, 6] },
-    pos: { 0: { x: 60, y: 55 }, 1: { x: 130, y: 55 }, 2: { x: 200, y: 55 }, 3: { x: 270, y: 55 }, 4: { x: 270, y: 175 }, 5: { x: 200, y: 175 }, 6: { x: 130, y: 175 }, 7: { x: 60, y: 175 } }
-  }
+const STAGES: Stage[] = [
+  { hitsNeeded: 8, intervalMs: 900, litMs: 700, label: '热身' },
+  { hitsNeeded: 10, intervalMs: 680, litMs: 520, label: '加速' },
+  { hitsNeeded: 12, intervalMs: 520, litMs: 390, label: '极限' }
 ];
+
+const CELL_COUNT = 4;
+const MAX_MISS = 3;
 
 export const Level22MergeGame: React.FC = () => {
   const { status, currentLevelId, gameplayPaused, setGameplayPaused, restartCurrentLevel, goLevelSelect, completeLevel, adminMode, runId } =
     useGameStore();
-  const isActive = status === 'playing' && currentLevelId === 22;
+  const isActive = status === 'playing' && currentLevelId === 14;
 
-  const [levelIdx, setLevelIdx] = useState(0);
-  const [path, setPath] = useState<number[]>([]);
+  const [stageIdx, setStageIdx] = useState(0);
+  const [hits, setHits] = useState(0);
+  const [lit, setLit] = useState<number | null>(null);
+  const [misses, setMisses] = useState(0);
   const [ended, setEnded] = useState(false);
-  const [mistakes, setMistakes] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const [pulse, setPulse] = useState(0);
 
-  const level = LEVELS[levelIdx];
-  const starsPreview = useMemo(() => (mistakes === 0 ? 3 : mistakes <= 2 ? 2 : 1), [mistakes]);
+  const litRef = useRef<number | null>(null);
+  const hitThisLitRef = useRef(false);
+  const stageIdxRef = useRef(0);
+  const endedRef = useRef(false);
+
+  const stage = STAGES[stageIdx];
+  const starsPreview = useMemo(() => {
+    if (failed) return misses <= 1 ? 1 : 0;
+    if (misses === 0) return 3;
+    if (misses <= 1) return 2;
+    return 1;
+  }, [failed, misses]);
 
   const succeed = useCallback(() => {
+    if (endedRef.current) return;
+    endedRef.current = true;
     setEnded(true);
     playWin();
-    window.setTimeout(() => completeLevel({ stars: starsPreview, orangesCollected: starsPreview, orangeTotal: 3 }), 280);
-  }, [completeLevel, starsPreview]);
+    const stars = misses === 0 ? 3 : misses <= 1 ? 2 : 1;
+    window.setTimeout(() => completeLevel({ stars, orangesCollected: stars, orangeTotal: 3 }), 280);
+  }, [completeLevel, misses]);
+
+  const fail = useCallback(() => {
+    if (endedRef.current) return;
+    endedRef.current = true;
+    setEnded(true);
+    setFailed(true);
+    playWrong();
+  }, []);
 
   useEffect(() => {
     if (!isActive) return;
-    setLevelIdx(0);
-    setPath([]);
+    setStageIdx(0);
+    stageIdxRef.current = 0;
+    setHits(0);
+    setLit(null);
+    litRef.current = null;
+    setMisses(0);
     setEnded(false);
-    setMistakes(0);
+    setFailed(false);
+    endedRef.current = false;
+    hitThisLitRef.current = false;
+    setPulse(0);
   }, [isActive, runId]);
 
-  const resetPath = () => setPath([]);
+  // 亮灯循环
+  useEffect(() => {
+    if (!isActive || gameplayPaused || ended || failed) return;
+    const cur = STAGES[stageIdx];
+    let alive = true;
 
-  const tapNode = (n: number) => {
-    if (!isActive || gameplayPaused || ended) return;
-    const { edges, nodeCount } = level;
-    if (path.length === 0) {
-      playPop();
-      setPath([n]);
-      return;
-    }
-    const last = path[path.length - 1];
-    if (path.includes(n)) {
-      if (n === last) return;
-      playWrong();
-      setMistakes((m) => m + 1);
-      resetPath();
-      return;
-    }
-    if (!edges[last]?.includes(n)) {
-      playWrong();
-      setMistakes((m) => m + 1);
-      resetPath();
-      return;
-    }
-    playPop();
-    const np = [...path, n];
-    setPath(np);
-    if (np.length === nodeCount) {
-      playCorrect();
-      if (levelIdx + 1 >= LEVELS.length) succeed();
-      else {
-        window.setTimeout(() => {
-          setLevelIdx((i) => i + 1);
-          resetPath();
-        }, 500);
+    const lightOne = () => {
+      if (!alive || endedRef.current) return;
+      // 上一盏未点算失误
+      if (litRef.current !== null && !hitThisLitRef.current) {
+        setMisses((m) => {
+          const nm = m + 1;
+          if (nm >= MAX_MISS) fail();
+          return nm;
+        });
+        playWrong();
       }
+      if (endedRef.current) return;
+
+      let next = Math.floor(Math.random() * CELL_COUNT);
+      if (litRef.current !== null && CELL_COUNT > 1) {
+        while (next === litRef.current) next = Math.floor(Math.random() * CELL_COUNT);
+      }
+      litRef.current = next;
+      hitThisLitRef.current = false;
+      setLit(next);
+      setPulse((p) => p + 1);
+
+      window.setTimeout(() => {
+        if (!alive || endedRef.current) return;
+        if (litRef.current === next && !hitThisLitRef.current) {
+          // 超时熄灭，下一轮 lightOne 会记失误
+          setLit(null);
+        }
+      }, cur.litMs);
+    };
+
+    lightOne();
+    const timer = window.setInterval(lightOne, cur.intervalMs);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
+  }, [isActive, gameplayPaused, ended, failed, stageIdx, fail]);
+
+  const tap = (idx: number) => {
+    if (!isActive || gameplayPaused || ended || failed) return;
+    if (litRef.current === idx && !hitThisLitRef.current) {
+      hitThisLitRef.current = true;
+      playSwipe();
+      playCorrect();
+      setLit(null);
+      litRef.current = null;
+      setHits((h) => {
+        const nh = h + 1;
+        const need = STAGES[stageIdxRef.current].hitsNeeded;
+        if (nh >= need) {
+          if (stageIdxRef.current + 1 >= STAGES.length) {
+            succeed();
+          } else {
+            playPop();
+            const ns = stageIdxRef.current + 1;
+            stageIdxRef.current = ns;
+            setStageIdx(ns);
+            return 0;
+          }
+        }
+        return nh;
+      });
+    } else {
+      playWrong();
+      setMisses((m) => {
+        const nm = m + 1;
+        if (nm >= MAX_MISS) fail();
+        return nm;
+      });
     }
   };
 
   if (!isActive) return null;
 
-  const lines: Array<[number, number]> = [];
-  Object.entries(level.edges).forEach(([a, list]) => {
-    list.forEach((b) => {
-      if (Number(a) < b) lines.push([Number(a), b]);
-    });
-  });
-
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto flex flex-col overflow-hidden" style={{ background: FRESH.bgGrad }}>
       <LevelTopBar
-        title={`✏️ ${level.title}`}
+        title={`⚡ 闪光反应 · ${stage.label}`}
         onPause={() => setGameplayPaused(true)}
-        hint={`${level.hint} · 不可重复、不可跳线 · 第 ${levelIdx + 1}/${LEVELS.length} 关`}
+        hint="灯亮就快点！点错或漏点都会失误"
         stats={[
-          { label: '进度', value: `${path.length}/${level.nodeCount}` },
-          { label: '失误', value: String(mistakes) },
-          { label: '⭐', value: `${starsPreview}/3` }
+          { label: '阶段', value: `${stageIdx + 1}/${STAGES.length}` },
+          { label: '命中', value: `${hits}/${stage.hitsNeeded}` },
+          { label: '失误', value: `${misses}/${MAX_MISS}` }
         ]}
       />
-      <div className="flex-1 min-h-0 flex items-center justify-center px-4">
-        <div className="relative w-[360px] h-[260px] rounded-3xl bg-white/85 border border-white shadow-lg">
-          <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            {lines.map(([a, b]) => (
-              <line key={`${a}-${b}`} x1={level.pos[a].x} y1={level.pos[a].y} x2={level.pos[b].x} y2={level.pos[b].y} stroke="#ccb494" strokeWidth={3} strokeLinecap="round" />
-            ))}
-            {path.length > 1 &&
-              path.slice(1).map((n, i) => {
-                const a = path[i];
-                return <line key={i} x1={level.pos[a].x} y1={level.pos[a].y} x2={level.pos[n].x} y2={level.pos[n].y} stroke="#9eb39f" strokeWidth={4} strokeLinecap="round" />;
-              })}
-          </svg>
-          {Object.entries(level.pos).map(([id, p]) => {
-            const n = Number(id);
-            const active = path.includes(n);
-            const last = path[path.length - 1] === n;
+
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-5 px-6">
+<div className="grid grid-cols-2 gap-4">
+          {Array.from({ length: CELL_COUNT }, (_, i) => {
+            const on = lit === i;
             return (
               <button
-                key={id}
+                key={`${i}-${pulse}`}
                 type="button"
-                onClick={() => tapNode(n)}
-                className={`absolute -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full border-2 border-white shadow-md text-base font-bold active:scale-95 ${last ? 'scale-110 ring-2 ring-[#3aab8e]' : ''}`}
+                onClick={() => tap(i)}
+                className="w-36 h-36 rounded-3xl border-4 border-white/80 shadow-lg active:scale-95 transition-transform"
                 style={{
-                  left: p.x,
-                  top: p.y,
-                  background: active ? `linear-gradient(145deg, ${PALETTE[n % PALETTE.length]}, ${PALETTE[(n + 1) % PALETTE.length]})` : '#e3f2fc',
-                  color: active ? '#fff' : '#1a3348'
+                  background: on
+                    ? `linear-gradient(145deg, ${PALETTE[i % PALETTE.length]}, ${PALETTE[(i + 1) % PALETTE.length]})`
+                    : 'rgba(255,255,255,0.55)',
+                  boxShadow: on ? `0 0 36px ${PALETTE[i % PALETTE.length]}99` : undefined,
+                  transform: on ? 'scale(1.06)' : undefined
                 }}
-              >
-                {n + 1}
-              </button>
+              />
             );
           })}
         </div>
+        <p className="text-xs text-[#5a7a92]">当前：{stage.label}</p>
       </div>
+
+      {failed && (
+        <div className="absolute inset-0 z-[90] bg-[#0a1628]/35 flex items-center justify-center px-10">
+          <div className="w-full rounded-3xl bg-white p-6 text-center space-y-3">
+            <h3 className="text-lg font-bold">反应慢了半拍</h3>
+            <button type="button" onClick={restartCurrentLevel} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#4a9fd8] to-[#3aab8e] text-white font-semibold">
+              再来一局
+            </button>
+            <button type="button" onClick={goLevelSelect} className="w-full py-3 rounded-xl bg-[#e3f2fc]">
+              返回关卡
+            </button>
+          </div>
+        </div>
+      )}
+
+      {adminMode && (
+        <button
+          type="button"
+          onClick={() => completeLevel({ stars: 3, orangesCollected: 3, orangeTotal: 3 })}
+          className="absolute right-4 top-36 z-50 px-3 py-2 bg-black/35 text-white rounded-full text-xs"
+        >
+          测试通关
+        </button>
+      )}
     </div>
   );
 };

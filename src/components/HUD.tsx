@@ -46,7 +46,7 @@ export const HUD: React.FC = () => {
     <div ref={headerRef} className="absolute inset-x-0 top-0 z-40 pointer-events-none flex flex-col">
       <LevelTopBar
         variant="minimal"
-        title="🍼 听，奶瓶里的摇篮曲"
+        title="🍼 摇篮奶曲"
         stats={stats}
         onPause={() => setGameplayPaused(true)}
         extra={

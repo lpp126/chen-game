@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { LEVELS } from '../data/levels';
 import { getLevelStartTheme } from '../data/levelStartThemes';
 import { FRESH, hudGlass, mobileContentInset, mobileTextMin, mobileTextTitle } from '../utils/levelTheme';
+import { MuteButton } from './MuteButton';
+import { unlockAudio } from '../utils/audioManager';
+import { AccountSyncModal } from './AccountSyncModal';
 
-const DEV_UNLOCK_ALL_LEVELS = true;
+const DEV_UNLOCK_ALL_LEVELS = false;
 
 const StarMini: React.FC<{ count: number; accent: string }> = ({ count, accent }) => (
   <span className="text-xs tracking-tight">
@@ -21,6 +24,7 @@ export const LevelSelectScreen: React.FC = () => {
     status,
     saveData,
     adminMode,
+    accountNickname,
     goHome,
     goOrangeShop,
     enterLevelStart,
@@ -29,12 +33,19 @@ export const LevelSelectScreen: React.FC = () => {
     logoutAdmin,
     syncAdminToPlayer
   } = useGameStore();
+  const [accountOpen, setAccountOpen] = useState(false);
+
+  useEffect(() => {
+    if (status === 'level_select' && !accountNickname && !adminMode) {
+      goHome();
+    }
+  }, [status, accountNickname, adminMode, goHome]);
 
   if (status !== 'level_select') return null;
 
   const completedCount = Object.values(saveData.levels).filter((item) => item.completed).length;
-  const continueLevel = LEVELS.find((level) => !saveData.levels[String(level.levelId)]?.completed)?.levelId ?? 24;
-  const progress = Math.round((completedCount / 24) * 100);
+  const continueLevel = LEVELS.find((level) => !saveData.levels[String(level.levelId)]?.completed)?.levelId ?? LEVELS[LEVELS.length - 1].levelId;
+  const progress = Math.round((completedCount / LEVELS.length) * 100);
   const continueTheme = getLevelStartTheme(continueLevel);
 
   return (
@@ -54,33 +65,47 @@ export const LevelSelectScreen: React.FC = () => {
 
       {/* 顶栏 */}
       <div className={`relative z-10 shrink-0 pt-5 pb-3 ${mobileContentInset}`}>
-        <div className={`${hudGlass} px-4 py-3.5`}>
-          <div className="flex items-center gap-3">
+        <div className={`${hudGlass} px-4 pt-3 pb-3.5`}>
+          <div className="relative flex items-start justify-between gap-2">
             <button
               type="button"
               onClick={goHome}
-              className="flex items-center justify-center w-11 h-11 rounded-xl bg-white/90 border border-white shadow-sm active:scale-95 transition-transform"
+              className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/90 border border-white shadow-sm active:scale-95 transition-transform shrink-0 z-10"
             >
-              <svg className="w-5 h-5" style={{ color: FRESH.text }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" style={{ color: FRESH.text }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <div className="flex-1 min-w-0 text-center">
-              <h2 className={`${mobileTextTitle} font-bold leading-tight`} style={{ color: FRESH.text }}>
-                24帧 · 人生放映厅
-              </h2>
-              <p className={`${mobileTextMin} mt-0.5`} style={{ color: FRESH.textMuted }}>
-                已通关 {completedCount} / 24 · {progress}%
-              </p>
+            <div className="flex items-center gap-1.5 shrink-0 z-10">
+              {accountNickname && (
+                <button
+                  type="button"
+                  onClick={() => setAccountOpen(true)}
+                  className="px-2.5 h-9 rounded-lg bg-white/80 border border-white/85 font-bold shadow-sm active:scale-95 max-w-[9rem] truncate leading-none"
+                  style={{ color: FRESH.text, fontSize: 25 }}
+                  title="账号详情"
+                >
+                  {accountNickname}
+                </button>
+              )}
+              <MuteButton className="!w-8 !h-8 !text-sm" />
+              <button
+                type="button"
+                onClick={goOrangeShop}
+                className="flex items-center gap-0.5 px-2 h-8 rounded-lg bg-white/80 border border-white/85 text-xs font-bold shadow-sm active:scale-95"
+                style={{ color: FRESH.text }}
+              >
+                🍊{saveData.totalOranges}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={goOrangeShop}
-              className={`flex items-center gap-1 px-3 h-11 rounded-xl bg-white/80 border border-white/85 ${mobileTextMin} font-bold shadow-sm active:scale-95`}
-              style={{ color: FRESH.text }}
-            >
-              🍊 {saveData.totalOranges}
-            </button>
+          </div>
+          <div className="text-center px-1 pt-3">
+            <h2 className="font-bold leading-none whitespace-nowrap tracking-wide" style={{ color: FRESH.text, fontSize: 36 }}>
+              24帧 · 添添放映厅
+            </h2>
+            <p className="mt-2 whitespace-nowrap leading-none" style={{ color: FRESH.textMuted, fontSize: 24 }}>
+              已通关 {completedCount} / {LEVELS.length} · {progress}%
+            </p>
           </div>
           <div className="mt-3 h-2.5 rounded-full bg-white/45 border border-white/60 overflow-hidden">
             <div
@@ -117,7 +142,10 @@ export const LevelSelectScreen: React.FC = () => {
                 key={level.levelId}
                 type="button"
                 disabled={!unlocked}
-                onClick={() => enterLevelStart(level.levelId)}
+                onClick={() => {
+                  unlockAudio();
+                  enterLevelStart(level.levelId);
+                }}
                 className={`text-left rounded-[1rem] border-2 p-2.5 transition-all active:scale-[0.98] ${
                   unlocked
                     ? 'bg-white/80 backdrop-blur-sm shadow-[0_6px_18px_rgba(26,51,72,0.08)]'
@@ -128,14 +156,6 @@ export const LevelSelectScreen: React.FC = () => {
                   ...(isNext ? { ringColor: theme.accent } : {})
                 }}
               >
-                {isNext && (
-                  <span
-                    className="inline-block mb-1 text-[11px] font-bold px-1.5 py-px rounded-full text-white leading-tight"
-                    style={{ background: theme.accent }}
-                  >
-                    继续这里
-                  </span>
-                )}
                 <div className="flex items-center gap-2 mb-1.5">
                   <div
                     className="shrink-0 w-10 h-10 rounded-[0.7rem] flex items-center justify-center text-[1.35rem] border-2 border-white/85 shadow-sm"
@@ -169,7 +189,10 @@ export const LevelSelectScreen: React.FC = () => {
       >
         <button
           type="button"
-          onClick={() => enterLevelStart(continueLevel)}
+          onClick={() => {
+            unlockAudio();
+            enterLevelStart(continueLevel);
+          }}
           className={`w-full py-3.5 rounded-2xl ${mobileTextTitle} font-bold text-white border-2 border-white/60 shadow-[0_12px_32px_rgba(26,51,72,0.2)] active:scale-[0.98] flex items-center justify-center gap-2`}
           style={{ background: `linear-gradient(135deg, ${FRESH.sky}, ${FRESH.sage})` }}
         >
@@ -194,6 +217,8 @@ export const LevelSelectScreen: React.FC = () => {
           </button>
         </div>
       )}
+
+      <AccountSyncModal open={accountOpen} detailsOnly onClose={() => setAccountOpen(false)} />
     </div>
   );
 };

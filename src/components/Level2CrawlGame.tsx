@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { LevelTopBar } from './LevelTopBar';
+import { playSoftClick, playStep, playWin } from '../utils/levelAudio';
 
 type Point = { x: number; y: number };
 
@@ -178,6 +179,7 @@ export const Level2CrawlGame: React.FC = () => {
   const doFinish = () => {
     if (finishedRef.current) return;
     finishedRef.current = true;
+    playWin();
     const elapsed = (Date.now() - startAt) / 1000;
     const starsRank = elapsed <= 90 ? 3 : 2;
     completeLevel({ stars: starsRank, orangesCollected: starsRank, orangeTotal: 3 });
@@ -251,6 +253,8 @@ export const Level2CrawlGame: React.FC = () => {
       setTimeout(() => setBlockMark(null), 350);
       return;
     }
+    playSoftClick();
+    playStep();
     setPath(route);
   };
 
@@ -268,7 +272,7 @@ export const Level2CrawlGame: React.FC = () => {
   return (
     <div className="absolute inset-0 z-30 pointer-events-auto bg-[#dcecf5] overflow-hidden">
       <LevelTopBar
-        title="🐣 摇摇晃晃向前冲"
+        title="🐣 第一步探险"
         onPause={() => setGameplayPaused(true)}
         stats={[]}
       />

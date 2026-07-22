@@ -1,6 +1,7 @@
 import React from 'react';
 import { useGameStore } from '../store/gameStore';
 import { LEVELS } from '../data/levels';
+import { getSettlementImage } from '../data/levelSettlementImages';
 import { FRESH, failBtnPrimary, failBtnSecondary } from '../utils/levelTheme';
 
 export const GameOver: React.FC = () => {
@@ -9,10 +10,7 @@ export const GameOver: React.FC = () => {
   if (status !== 'gameover') return null;
 
   const isLast = currentLevelId >= LEVELS.length;
-  const settlementImage =
-    currentLevelId === 1 ? '/images/第一关结算.png' :
-    currentLevelId === 2 ? '/images/第二关结算.png' :
-    null;
+  const settlementImage = getSettlementImage(currentLevelId);
 
   return (
     <div
@@ -42,13 +40,15 @@ export const GameOver: React.FC = () => {
             src={settlementImage}
             alt={`第${currentLevelId}关结算`}
             className="w-44 h-44 object-contain drop-shadow-md"
+            loading="lazy"
+            decoding="async"
           />
         ) : (
           <div
             className="w-36 h-36 rounded-2xl border-2 border-dashed bg-white/60 flex items-center justify-center text-center px-3 text-xs"
             style={{ borderColor: `${FRESH.mist}88`, color: `${FRESH.text}99` }}
           >
-            结算表情包占位
+            🎉
           </div>
         )}
       </div>
