@@ -11,7 +11,7 @@ export interface LevelConfig {
   };
 }
 
-const defaultCover = '/images/首页封面.webp';
+const defaultCover = '/images/home-cover.webp';
 
 export { defaultCover as LEVEL_DEFAULT_COVER };
 

@@ -49,7 +49,7 @@ export class Game extends Scene {
   private babyTween?: Phaser.Tweens.Tween;
   
   // Audio elements
-  private bgm!: Phaser.Sound.BaseSound;
+  private bgm?: Phaser.Sound.BaseSound;
   
   // Game logic state
   private storeUnsubscribe!: () => void;
@@ -77,14 +77,7 @@ export class Game extends Scene {
     this.createBaby();
     this.applyPlayAreaLayout(useGameStore.getState().level1HudHeight || LEVEL1_HUD_HEIGHT);
 
-    // 第 1 关节奏玩法依赖 BGM，不受全局静音影响（静音只关菜单 BGM / 其它关音效）
-    if (this.cache.audio.exists('bgm-women')) {
-      if (!this.sound.get('bgm-women')) {
-        this.bgm = this.sound.add('bgm-women', { loop: true, volume: 0.7 });
-      } else {
-        this.bgm = this.sound.get('bgm-women');
-      }
-    }
+    // 第 1 关 BGM 按需加载（避免进首页就抢带宽）
 
     // Input handlers
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -515,6 +508,32 @@ export class Game extends Scene {
     }).setOrigin(0.5).setDepth(26);
   }
 
+  private ensureLevel1Bgm(thenPlay: boolean) {
+    const bind = () => {
+      if (!this.sound.get('bgm-women')) {
+        this.bgm = this.sound.add('bgm-women', { loop: true, volume: 0.7 });
+      } else {
+        this.bgm = this.sound.get('bgm-women');
+      }
+      if (!thenPlay || !this.bgm) return;
+      if (!this.bgm.isPlaying) {
+        this.bgm.play({ volume: 0.7 });
+      } else {
+        (this.bgm as Phaser.Sound.WebAudioSound).setSeek(0);
+        (this.bgm as Phaser.Sound.WebAudioSound).setVolume(0.7);
+      }
+    };
+
+    if (this.cache.audio.exists('bgm-women')) {
+      bind();
+      return;
+    }
+
+    this.load.audio('bgm-women', '/audio/level1-bgm.mp3');
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => bind());
+    this.load.start();
+  }
+
   private startGame(runId: number) {
     this.isPlaying = true;
     this.isPaused = false;
@@ -525,13 +544,8 @@ export class Game extends Scene {
     this.pauseTime = 0;
     this.pausedDuration = 0;
     
-    // Play BGM（节奏关必播，不吃静音）
-    if (this.bgm && !this.bgm.isPlaying) {
-      this.bgm.play({ volume: 0.7 });
-    } else if (this.bgm) {
-      (this.bgm as Phaser.Sound.WebAudioSound).setSeek(0);
-      (this.bgm as Phaser.Sound.WebAudioSound).setVolume(0.7);
-    }
+    // Play BGM（节奏关必播，不吃静音；首次进入再拉音频）
+    this.ensureLevel1Bgm(true);
     
     // Clear old notes
     this.notes.forEach(n => { if (n.sprite) n.sprite.destroy(); });

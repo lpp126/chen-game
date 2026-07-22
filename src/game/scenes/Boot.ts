@@ -6,10 +6,10 @@ export class Boot extends Scene {
   }
 
   preload() {
+    // 首页优先：不在启动时拉取第 1 关 3MB+ BGM，改到进入第 1 关再加载
     this.load.image('bg-room', '/images/bg-room.webp');
     this.load.image('bg-game', '/images/奶嘴添添.webp');
     this.load.image('bottle-hd', '/images/bottle-hd.webp');
-    this.load.audio('bgm-women', '/audio/level1-bgm.mp3');
 
     this.load.on('loaderror', (fileObj: { key?: string; type?: string }) => {
       console.error('Failed to load asset:', fileObj.key);

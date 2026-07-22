@@ -5,7 +5,7 @@ import { unlockAudio } from '../utils/audioManager';
 import { AccountSyncModal } from './AccountSyncModal';
 import { WishWallModal } from './WishWallModal';
 
-const HOME_COVER = '/images/首页封面.webp';
+const HOME_COVER = '/images/home-cover.webp';
 
 /** 750×1334 设计稿：slogan 约在 y≈1218，按钮底边与其留空 */
 const START_BTN_BOTTOM_PX = Math.round(DESIGN_HEIGHT * 0.165);
@@ -63,8 +63,10 @@ export const HomeScreen: React.FC = () => {
       <img
         src={HOME_COVER}
         alt="24帧人生"
-        className="absolute inset-0 w-full h-full pointer-events-none select-none"
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
         draggable={false}
+        fetchPriority="high"
+        decoding="async"
       />
 
       <button

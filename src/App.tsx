@@ -91,7 +91,16 @@ export default function App() {
 
   useEffect(() => {
     const menuActive = status === 'home' || status === 'level_select';
-    setMenuBgmActive(menuActive);
+    if (!menuActive) {
+      setMenuBgmActive(false);
+      return;
+    }
+    // 首页先让封面抢带宽，稍后再拉菜单 BGM
+    if (status === 'home') {
+      const t = window.setTimeout(() => setMenuBgmActive(true), 700);
+      return () => window.clearTimeout(t);
+    }
+    setMenuBgmActive(true);
   }, [status]);
 
   // 第 24 关：规则页无 BGM；游戏界面与结算页循环播放生日快乐曲

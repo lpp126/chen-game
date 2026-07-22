@@ -131,10 +131,15 @@ $$;
 
 -- 回填已有行的统计列（可重复执行）
 update public.player_saves p
-   set cleared_levels = s.cleared_levels,
-       total_oranges = s.total_oranges,
-       birthday_message = s.birthday_message
-  from public._save_stats(p.save_data) as s;
+   set cleared_levels = (
+         select s.cleared_levels from public._save_stats(p.save_data) as s
+       ),
+       total_oranges = (
+         select s.total_oranges from public._save_stats(p.save_data) as s
+       ),
+       birthday_message = (
+         select s.birthday_message from public._save_stats(p.save_data) as s
+       );
 
 grant execute on function public.account_fetch_save(text, text) to anon, authenticated;
 grant execute on function public.account_upsert_save(text, text, jsonb) to anon, authenticated;
