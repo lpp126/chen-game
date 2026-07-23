@@ -9,7 +9,7 @@ type Stage = { hitsNeeded: number; intervalMs: number; litMs: number; label: str
 const STAGES: Stage[] = [
   { hitsNeeded: 8, intervalMs: 900, litMs: 700, label: '热身' },
   { hitsNeeded: 10, intervalMs: 680, litMs: 520, label: '加速' },
-  { hitsNeeded: 12, intervalMs: 520, litMs: 390, label: '极限' }
+  { hitsNeeded: 12, intervalMs: 540, litMs: 400, label: '极限' }
 ];
 
 const CELL_COUNT = 4;

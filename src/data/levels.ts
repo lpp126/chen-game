@@ -37,7 +37,7 @@ export const LEVELS: LevelConfig[] = [
   { levelId: 19, age: 19, title: '叠高一层', theme: '飘移精准叠楼', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
   { levelId: 20, age: 20, title: '梗图夜话', theme: '谐音对照 + emoji 成语', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
   { levelId: 21, age: 21, title: '夜灯数独', theme: '四格逻辑填数', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
-  { levelId: 22, age: 23, title: '试镜倒计时', theme: '记忆序列复现', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
-  { levelId: 23, age: 22, title: '色差分毫', theme: '观察力 · 递增网格', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
+  { levelId: 22, age: 22, title: '试镜倒计时', theme: '记忆序列复现', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
+  { levelId: 23, age: 23, title: '色差分毫', theme: '观察力 · 递增网格', coverImage: defaultCover, bgm: 'bgm-women', orangeSpawnConfig: { min: 5, max: 8 } },
   { levelId: 24, age: 24, title: '二十四烛光', theme: '见缝插烛 · 庆生', coverImage: defaultCover, bgm: 'bgm-happybirthday', orangeSpawnConfig: { min: 5, max: 8 } },
 ];

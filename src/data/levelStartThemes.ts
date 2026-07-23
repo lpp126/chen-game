@@ -89,8 +89,8 @@ export const LEVEL_START_THEMES: Record<number, LevelStartTheme> = {
   19: cinematic('🏗', '19 岁 · 对齐落块，把楼叠得更高', 'aurora', 'grid'),
   20: cinematic('🐑', '20 岁 · 夜话：谐音梗 + emoji 成语', 'aurora', 'dots'),
   21: cinematic('🔢', '21 岁 · 夜灯数独，两题复位大脑', 'teal', 'grid'),
-  22: cinematic('🎬', '23 岁 · 试镜：记住顺序再复现', 'sky', 'sparkle'),
-  23: cinematic('🎨', '22 岁 · 分毫色差，六轮眼力挑战', 'aurora', 'dots'),
+  22: cinematic('🎬', '22 岁 · 试镜：记住顺序再复现', 'sky', 'sparkle'),
+  23: cinematic('🎨', '23 岁 · 分毫色差，六轮眼力挑战', 'aurora', 'dots'),
   24: cinematic('🕯️', '24 岁 · 插满二十四烛，生日快乐', 'sky', 'sparkle')
 };
 
