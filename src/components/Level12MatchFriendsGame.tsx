@@ -156,23 +156,42 @@ export const Level12MatchFriendsGame: React.FC = () => {
           className={`grid ${gap} w-full max-w-[620px]`}
           style={{ gridTemplateColumns: `repeat(${stage.cols}, minmax(0, 1fr))` }}
         >
-          {cards.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => flip(c.id)}
-              disabled={c.matched || c.faceUp || lock}
-              className={`aspect-square rounded-xl font-bold border-2 transition-all ${cellText} ${
-                c.matched
-                  ? 'bg-[#d4f0d4] border-[#8bc98b] opacity-60'
-                  : c.faceUp
-                    ? 'bg-white border-[#B2CEE5]'
-                    : 'bg-[#B2CEE5]/40 border-[#B2CEE5] text-transparent'
-              }`}
-            >
-              {c.faceUp || c.matched ? c.emoji : '?'}
-            </button>
-          ))}
+          {cards.map((c) => {
+            const revealed = c.faceUp || c.matched;
+            // 勿对已翻开牌用 native disabled：iOS/Safari 会把 disabled 按钮内 emoji 洗成空白
+            const inert = c.matched || c.faceUp || lock;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => flip(c.id)}
+                aria-disabled={inert}
+                className={`aspect-square rounded-xl border-2 transition-all flex items-center justify-center ${cellText} ${
+                  inert ? 'pointer-events-none' : ''
+                } ${
+                  c.matched
+                    ? 'bg-[#d4f0d4] border-[#8bc98b] opacity-60'
+                    : c.faceUp
+                      ? 'bg-white border-[#B2CEE5]'
+                      : 'bg-[#B2CEE5]/40 border-[#B2CEE5]'
+                }`}
+              >
+                {revealed ? (
+                  <span
+                    className="font-normal leading-none"
+                    style={{
+                      fontFamily:
+                        '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif'
+                    }}
+                  >
+                    {c.emoji}
+                  </span>
+                ) : (
+                  <span className="font-bold text-transparent select-none">?</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
       {failed && (
