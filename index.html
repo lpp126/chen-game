@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover" />
     <title>24帧人生</title>
     <!-- 首页封面优先加载，避免被菜单 BGM / 第 1 关资源抢带宽 -->
     <link rel="preload" as="image" href="/images/home-cover.webp" type="image/webp" />
   </head>
-  <body class="dark:bg-gray-900 w-full h-full max-w-full max-h-full">
-    <div id="root" class="w-screen h-screen max-w-full max-h-full"></div>
+  <body class="dark:bg-gray-900 w-full h-full max-w-full max-h-full overflow-hidden">
+    <div id="root" class="w-screen h-[100dvh] max-w-full max-h-[100dvh] overflow-hidden"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

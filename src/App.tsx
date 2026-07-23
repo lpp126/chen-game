@@ -51,13 +51,23 @@ export default function App() {
 
   useEffect(() => {
     const handleResize = () => {
-      const scaleX = window.innerWidth / DESIGN_WIDTH;
-      const scaleY = window.innerHeight / DESIGN_HEIGHT;
+      // visualViewport 更贴近手机浏览器真实可视区（含地址栏收起/展开）
+      const vv = window.visualViewport;
+      const viewW = vv?.width ?? window.innerWidth;
+      const viewH = vv?.height ?? window.innerHeight;
+      const scaleX = viewW / DESIGN_WIDTH;
+      const scaleY = viewH / DESIGN_HEIGHT;
       setScale(Math.min(scaleX, scaleY));
     };
     window.addEventListener('resize', handleResize);
+    window.visualViewport?.addEventListener('resize', handleResize);
+    window.visualViewport?.addEventListener('scroll', handleResize);
     handleResize();
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('scroll', handleResize);
+    };
   }, []);
 
   // 首页封面优先完成后，再初始化 Phaser，避免启动抢带宽
@@ -148,18 +158,29 @@ export default function App() {
     };
   }, []);
 
+  // transform:scale 不改变布局占位；外层用缩放后的宽高做外壳，避免手机浏览器裁成「上黑下半截」
+  const frameW = DESIGN_WIDTH * scale;
+  const frameH = DESIGN_HEIGHT * scale;
+
   return (
-    <div className="relative w-screen h-[100dvh] overflow-hidden bg-black flex justify-center items-center">
-      <div 
+    <div className="relative w-screen h-[100dvh] max-h-[100dvh] overflow-hidden bg-black flex justify-center items-center">
+      <div
         className="relative overflow-hidden shrink-0"
         style={{
-          width: `${DESIGN_WIDTH}px`,
-          height: `${DESIGN_HEIGHT}px`,
-          transform: `scale(${scale})`,
-          transformOrigin: 'center center',
-          background: FRESH.bgGrad
+          width: frameW,
+          height: frameH
         }}
       >
+        <div
+          className="relative overflow-hidden"
+          style={{
+            width: `${DESIGN_WIDTH}px`,
+            height: `${DESIGN_HEIGHT}px`,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+            background: FRESH.bgGrad
+          }}
+        >
         {/* Phaser Container */}
         <div id="game-container" className={`absolute inset-0 z-0 ${status === 'playing' && currentLevelId === 1 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} />
         
@@ -198,6 +219,7 @@ export default function App() {
         <div id="pause-root" className="absolute inset-0 z-[200] pointer-events-none" aria-hidden />
         <GamePauseOverlay />
         <AssetLoadOverlay />
+        </div>
       </div>
     </div>
   );

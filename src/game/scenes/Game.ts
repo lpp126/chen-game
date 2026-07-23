@@ -276,9 +276,8 @@ export class Game extends Scene {
     const fresh = useGameStore.getState();
     if (fresh.status === 'gameover') {
       const acc = fresh.stats.total > 0 ? (fresh.stats.perfect + fresh.stats.good) / fresh.stats.total : 0;
-      const collectRatio = fresh.stats.totalNotesSpawned > 0 ? fresh.notesCollected / fresh.stats.totalNotesSpawned : 0;
       let stars = 1;
-      if (acc >= 0.9 && collectRatio >= 0.6) stars = 3;
+      if (acc >= 0.9) stars = 3;
       else if (acc >= 0.7) stars = 2;
       store.completeLevel({
         stars,
