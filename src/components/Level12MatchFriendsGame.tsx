@@ -3,6 +3,7 @@ import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
 import { playFlip, playMatch, playWin, playWrong } from '../utils/levelAudio';
+import { emojiSafeStyle } from '../utils/emojiSafe';
 
 const EMOJI_POOL = [
   '🐱', '🐶', '🐼', '🦊', '🐰', '🐻', '🐸', '🦁',
@@ -177,15 +178,7 @@ export const Level12MatchFriendsGame: React.FC = () => {
                 }`}
               >
                 {revealed ? (
-                  <span
-                    className="font-normal leading-none"
-                    style={{
-                      fontFamily:
-                        '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif'
-                    }}
-                  >
-                    {c.emoji}
-                  </span>
+                  <span style={emojiSafeStyle}>{c.emoji}</span>
                 ) : (
                   <span className="font-bold text-transparent select-none">?</span>
                 )}

@@ -7,6 +7,7 @@ import { MuteButton } from './MuteButton';
 import { unlockAudio } from '../utils/audioManager';
 import { AccountSyncModal } from './AccountSyncModal';
 import { WishWallModal } from './WishWallModal';
+import { emojiSafeStyle } from '../utils/emojiSafe';
 
 const DEV_UNLOCK_ALL_LEVELS = false;
 
@@ -109,7 +110,8 @@ export const LevelSelectScreen: React.FC = () => {
                 className="flex items-center gap-0.5 px-2 h-8 rounded-lg bg-white/80 border border-white/85 text-xs font-bold shadow-sm active:scale-95"
                 style={{ color: FRESH.text }}
               >
-                🍊{saveData.totalOranges}
+                <span style={emojiSafeStyle}>🍊</span>
+                {saveData.totalOranges}
               </button>
             </div>
           </div>
@@ -155,15 +157,16 @@ export const LevelSelectScreen: React.FC = () => {
               <button
                 key={level.levelId}
                 type="button"
-                disabled={!unlocked}
+                aria-disabled={!unlocked}
                 onClick={() => {
+                  if (!unlocked) return;
                   unlockAudio();
                   enterLevelStart(level.levelId);
                 }}
                 className={`text-left rounded-[1rem] border-2 p-2.5 transition-all active:scale-[0.98] ${
                   unlocked
                     ? 'bg-white/80 backdrop-blur-sm shadow-[0_6px_18px_rgba(26,51,72,0.08)]'
-                    : 'bg-white/35 opacity-50'
+                    : 'bg-white/35 opacity-50 pointer-events-none'
                 } ${isNext ? 'ring-2 ring-offset-2 ring-offset-transparent' : ''}`}
                 style={{
                   borderColor: unlocked ? (isNext ? theme.accent : done ? theme.accent : theme.cardBorder) : `${FRESH.mist}55`,
@@ -175,7 +178,7 @@ export const LevelSelectScreen: React.FC = () => {
                     className="shrink-0 w-10 h-10 rounded-[0.7rem] flex items-center justify-center text-[1.35rem] border-2 border-white/85 shadow-sm"
                     style={{ background: theme.orbGradient }}
                   >
-                    {unlocked ? theme.emoji : '🔒'}
+                    <span style={emojiSafeStyle}>{unlocked ? theme.emoji : '🔒'}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`${mobileTextMin} font-semibold leading-none`} style={{ color: FRESH.textMuted }}>
@@ -210,7 +213,7 @@ export const LevelSelectScreen: React.FC = () => {
           className={`w-full py-3.5 rounded-2xl ${mobileTextTitle} font-bold text-white border-2 border-white/60 shadow-[0_12px_32px_rgba(26,51,72,0.2)] active:scale-[0.98] flex items-center justify-center gap-2`}
           style={{ background: `linear-gradient(135deg, ${FRESH.sky}, ${FRESH.sage})` }}
         >
-          <span>{continueTheme.emoji}</span>
+          <span style={emojiSafeStyle}>{continueTheme.emoji}</span>
           <span>继续旅程 · 第 {continueLevel} 关</span>
         </button>
       </div>

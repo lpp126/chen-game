@@ -4,6 +4,7 @@ import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
 import { playCorrect, playSoftClick, playWin, playWrong } from '../utils/levelAudio';
 import { useLevelAssetsGate } from '../hooks/useLevelAssetsGate';
+import { COLOR_EMOJI_FONT, emojiSafeStyle } from '../utils/emojiSafe';
 
 const MAX_LIVES = 3;
 const ROUND_COUNT = 6;
@@ -377,7 +378,10 @@ export const Level25WordFunGame: React.FC = () => {
                             : c.length === 1 && /[\u4e00-\u9fff]/.test(c)
                               ? 42
                               : 48,
-                        fontWeight: 800
+                        // 汉字可粗体；emoji 用正常字重 + 彩色字体栈，避免 iOS 空白
+                        ...(c.length === 1 && /[\u4e00-\u9fff]/.test(c)
+                          ? { fontWeight: 800 }
+                          : { ...emojiSafeStyle, fontFamily: COLOR_EMOJI_FONT })
                       }}
                     >
                       {c}

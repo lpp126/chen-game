@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
+import { emojiSafeStyle } from '../utils/emojiSafe';
 
 type ItemType = 'pencil' | 'eraser' | 'ruler' | 'sharpener' | 'glue' | 'crayon';
 
@@ -424,12 +425,17 @@ export const Level6BagOrganizeGame: React.FC = () => {
           .sort((a, b) => a.layer - b.layer)
           .map((tile) => {
             const blocked = blockedIds.has(tile.id);
+            // 勿用 native disabled：iOS/Safari 会把被挡砖上的 emoji 洗成空白
+            const inert = blocked || failState || done;
             return (
               <button
                 key={tile.id}
+                type="button"
                 onClick={() => pickTile(tile)}
-                disabled={blocked || failState || done}
+                aria-disabled={inert}
                 className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-2xl border text-[#4f463d] ${
+                  inert ? 'pointer-events-none' : ''
+                } ${
                   blocked ? 'border-[#cbb79d] bg-[#e4d6c4] opacity-75' : 'border-white/80 bg-white/90 hover:scale-105'
                 } ${pickedPulseId === tile.id ? 'animate-[pulse_0.2s_ease-in-out]' : ''}`}
                 style={{
@@ -440,7 +446,9 @@ export const Level6BagOrganizeGame: React.FC = () => {
                   boxShadow: `0 ${tile.layer * 2 + 5}px ${tile.layer * 4 + 8}px rgba(0,0,0,0.16)`
                 }}
               >
-                <div className="text-2xl leading-none">{byType[tile.type].icon}</div>
+                <div className="text-2xl" style={emojiSafeStyle}>
+                  {byType[tile.type].icon}
+                </div>
                 <div className="text-[11px] mt-1">{byType[tile.type].label}</div>
                 <div className="absolute inset-0 rounded-2xl" style={{ backgroundColor: byType[tile.type].color, opacity: 0.3 }} />
               </button>
@@ -451,14 +459,35 @@ export const Level6BagOrganizeGame: React.FC = () => {
       </div>
 
       <div className="absolute left-8 right-8 top-[880px] h-20 grid grid-cols-3 gap-3 z-50">
-        <button onClick={useUndo} disabled={tools.undo <= 0 || done} className="rounded-2xl bg-white/85 border border-white text-sm text-[#4a4138]">
+        <button
+          type="button"
+          onClick={useUndo}
+          aria-disabled={tools.undo <= 0 || done}
+          className={`rounded-2xl bg-white/85 border border-white text-sm text-[#4a4138] ${
+            tools.undo <= 0 || done ? 'pointer-events-none opacity-40' : ''
+          }`}
+        >
           ↶ 撤回 x{tools.undo}
         </button>
-        <button onClick={useShuffle} disabled={tools.shuffle <= 0 || done} className="rounded-2xl bg-white/85 border border-white text-sm text-[#4a4138]">
-          🔀 洗牌 x{tools.shuffle}
+        <button
+          type="button"
+          onClick={useShuffle}
+          aria-disabled={tools.shuffle <= 0 || done}
+          className={`rounded-2xl bg-white/85 border border-white text-sm text-[#4a4138] ${
+            tools.shuffle <= 0 || done ? 'pointer-events-none opacity-40' : ''
+          }`}
+        >
+          <span style={emojiSafeStyle}>🔀</span> 洗牌 x{tools.shuffle}
         </button>
-        <button onClick={usePlusSlot} disabled={tools.plus <= 0 || done} className="rounded-2xl bg-white/85 border border-white text-sm text-[#4a4138]">
-          ➕ 加槽 x{tools.plus}
+        <button
+          type="button"
+          onClick={usePlusSlot}
+          aria-disabled={tools.plus <= 0 || done}
+          className={`rounded-2xl bg-white/85 border border-white text-sm text-[#4a4138] ${
+            tools.plus <= 0 || done ? 'pointer-events-none opacity-40' : ''
+          }`}
+        >
+          <span style={emojiSafeStyle}>➕</span> 加槽 x{tools.plus}
         </button>
       </div>
 

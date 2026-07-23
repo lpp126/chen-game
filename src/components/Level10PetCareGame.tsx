@@ -3,6 +3,7 @@ import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
 import { playCorrect, playToggle, playWin } from '../utils/levelAudio';
+import { emojiSafeStyle } from '../utils/emojiSafe';
 
 /** 由全灭状态经点击生成（正确四邻规则），保证可解；三小关由易到难 */
 const PUZZLES = [
@@ -188,7 +189,11 @@ export const Level10PetCareGame: React.FC = () => {
                 hintCell === i ? 'border-[#9eb39f] ring-4 ring-[#3aab8e]/40 scale-105' : 'border-white'
               } ${on ? 'bg-[#f5e6a8] shadow-[inset_0_0_20px_#fff6d8]' : 'bg-[#e3f2fc]'}`}
             >
-              {on ? '💡' : ''}
+              {on ? (
+                <span style={emojiSafeStyle}>💡</span>
+              ) : (
+                ''
+              )}
             </button>
           ))}
         </div>
@@ -196,10 +201,12 @@ export const Level10PetCareGame: React.FC = () => {
           <button
             type="button"
             onClick={showHint}
-            disabled={usedHints >= stageHintMax}
-            className="flex-[1.25] py-3 px-2 rounded-xl bg-white/90 border border-white text-sm font-semibold text-[#1a3348] active:scale-95 disabled:opacity-40 whitespace-nowrap"
+            aria-disabled={usedHints >= stageHintMax}
+            className={`flex-[1.25] py-3 px-2 rounded-xl bg-white/90 border border-white text-sm font-semibold text-[#1a3348] active:scale-95 whitespace-nowrap ${
+              usedHints >= stageHintMax ? 'opacity-40 pointer-events-none' : ''
+            }`}
           >
-            💡 提示 ({stageHintMax - usedHints})
+            <span style={emojiSafeStyle}>💡</span> 提示 ({stageHintMax - usedHints})
           </button>
           <button
             type="button"

@@ -3,6 +3,7 @@ import { LevelTopBar } from './LevelTopBar';
 import { useGameStore } from '../store/gameStore';
 import { FRESH } from '../utils/levelTheme';
 import { playCorrect, playFlip, playLock, playWin, playWrong } from '../utils/levelAudio';
+import { emojiSafeStyle } from '../utils/emojiSafe';
 
 type Mode = 'investigate' | 'accuse';
 
@@ -366,10 +367,10 @@ export const Level17PathGame: React.FC = () => {
         <div className="flex gap-2 justify-center pt-1">
           {(
             [
-              ['investigate', '🔍 调查'],
-              ['accuse', '🚨 指认']
+              ['investigate', '🔍', '调查'],
+              ['accuse', '🚨', '指认']
             ] as const
-          ).map(([m, label]) => (
+          ).map(([m, icon, label]) => (
             <button
               key={m}
               type="button"
@@ -382,7 +383,7 @@ export const Level17PathGame: React.FC = () => {
                 borderColor: mode === m ? FRESH.accent : FRESH.mist
               }}
             >
-              {label}
+              <span style={emojiSafeStyle}>{icon}</span> {label}
             </button>
           ))}
         </div>
@@ -398,13 +399,17 @@ export const Level17PathGame: React.FC = () => {
           >
             {cards.map((c) => {
               const showFace = c.faceUp || c.caught;
+              // 勿用 native disabled：iOS/Safari 会把按钮内 emoji 洗成空白
+              const inert = ended || failed || c.caught;
               return (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => onCardTap(c.id)}
-                  disabled={ended || failed || c.caught}
-                  className={`aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 px-1 transition-all active:scale-95 disabled:opacity-90 ${
+                  aria-disabled={inert}
+                  className={`aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 px-1 transition-all active:scale-95 ${
+                    inert ? 'pointer-events-none opacity-90' : ''
+                  } ${
                     c.caught
                       ? 'bg-[#fde8e8] border-[#e07070]'
                       : showFace
@@ -416,7 +421,9 @@ export const Level17PathGame: React.FC = () => {
                 >
                   {showFace ? (
                     <>
-                      <span className="text-2xl leading-none">{c.emoji}</span>
+                      <span className="text-2xl" style={emojiSafeStyle}>
+                        {c.emoji}
+                      </span>
                       {c.caught || (c.isVillain && c.faceUp) ? (
                         <span className="text-[10px] font-bold text-[#c75b7a]">坏人</span>
                       ) : (
@@ -433,7 +440,9 @@ export const Level17PathGame: React.FC = () => {
                       )}
                     </>
                   ) : (
-                    <span className="text-xl opacity-70">❔</span>
+                    <span className="text-xl opacity-70" style={emojiSafeStyle}>
+                      ❔
+                    </span>
                   )}
                 </button>
               );

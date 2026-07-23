@@ -5,6 +5,7 @@ import { unlockAudio } from '../utils/audioManager';
 import { getHomeCoverUrl, isHomeCoverReady, prefetchHomeCover } from '../utils/homeCoverCache';
 import { AccountSyncModal } from './AccountSyncModal';
 import { WishWallModal } from './WishWallModal';
+import { emojiSafeStyle } from '../utils/emojiSafe';
 
 /** 750×1334 设计稿：slogan 约在 y≈1218，按钮底边与其留空 */
 const START_BTN_BOTTOM_PX = Math.round(DESIGN_HEIGHT * 0.165);
@@ -91,14 +92,16 @@ export const HomeScreen: React.FC = () => {
       <button
         type="button"
         onClick={() => setWishWallOpen(true)}
-        disabled={!coverReady}
-        className="absolute top-4 right-3.5 z-30 flex items-center gap-1.5 px-3 h-9 rounded-full border border-white/70 text-[22px] font-bold text-white active:scale-95 transition-transform disabled:opacity-30"
+        aria-disabled={!coverReady}
+        className={`absolute top-4 right-3.5 z-30 flex items-center gap-1.5 px-3 h-9 rounded-full border border-white/70 text-[22px] font-bold text-white active:scale-95 transition-transform ${
+          coverReady ? '' : 'opacity-30 pointer-events-none'
+        }`}
         style={{
           background: 'linear-gradient(135deg, rgba(255,179,71,0.92), rgba(255,140,66,0.92))',
           boxShadow: '0 5px 14px rgba(255,140,66,0.32)'
         }}
       >
-        <span className="text-[26px]" aria-hidden>
+        <span className="text-[26px]" style={emojiSafeStyle} aria-hidden>
           💌
         </span>
         留言墙
@@ -107,8 +110,10 @@ export const HomeScreen: React.FC = () => {
       <button
         type="button"
         onClick={enterGame}
-        disabled={!coverReady}
-        className="absolute left-1/2 z-30 flex h-[72px] w-[320px] -translate-x-1/2 items-center justify-center gap-3 rounded-full border border-white/75 text-[28px] font-bold leading-none tracking-[0.08em] text-white whitespace-nowrap active:scale-[0.97] transition-transform touch-manipulation disabled:opacity-40 disabled:active:scale-100"
+        aria-disabled={!coverReady}
+        className={`absolute left-1/2 z-30 flex h-[72px] w-[320px] -translate-x-1/2 items-center justify-center gap-3 rounded-full border border-white/75 text-[28px] font-bold leading-none tracking-[0.08em] text-white whitespace-nowrap active:scale-[0.97] transition-transform touch-manipulation ${
+          coverReady ? '' : 'opacity-40 pointer-events-none active:scale-100'
+        }`}
         style={{
           bottom: START_BTN_BOTTOM_PX,
           background: 'linear-gradient(90deg, #3a9fc4 0%, #45b896 100%)',
