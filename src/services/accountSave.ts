@@ -305,3 +305,36 @@ export async function fetchBirthdayWishes(): Promise<BirthdayWishItem[]> {
     })
     .filter((x): x is BirthdayWishItem => Boolean(x));
 }
+
+export type OrangeLeaderboardItem = {
+  rank: number;
+  nickname: string;
+  /** 已通关关卡数 */
+  levels: number;
+  oranges: number;
+};
+
+/** 橙子排行榜：前 500，同分并列（公开 RPC） */
+export async function fetchOrangeLeaderboard(): Promise<OrangeLeaderboardItem[]> {
+  const client = getSupabase();
+  if (!client) return [];
+  const { data, error } = await client.rpc('list_orange_leaderboard');
+  if (error || !data) return [];
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((row) => {
+      const r = row as { rank?: number; nickname?: string; levels?: number; oranges?: number };
+      const nickname = typeof r.nickname === 'string' ? r.nickname.trim() : '';
+      const rank = Number(r.rank);
+      const levels = Number(r.levels);
+      const oranges = Number(r.oranges);
+      if (!nickname || !Number.isFinite(rank) || !Number.isFinite(oranges)) return null;
+      return {
+        rank: Math.max(1, Math.floor(rank)),
+        nickname,
+        levels: Number.isFinite(levels) ? Math.max(0, Math.floor(levels)) : 0,
+        oranges: Math.max(0, Math.floor(oranges))
+      };
+    })
+    .filter((x): x is OrangeLeaderboardItem => Boolean(x));
+}

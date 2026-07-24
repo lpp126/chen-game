@@ -172,9 +172,47 @@ $$;
 
 grant execute on function public.list_birthday_wishes() to anon, authenticated;
 
+-- 橙子排行榜（前 500；同分并列，下一名跳过空位，如 5 个并列第 1 → 下一名为第 6）
+create or replace function public.list_orange_leaderboard()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (
+      select jsonb_agg(
+        jsonb_build_object(
+          'rank', r.rank,
+          'nickname', r.nickname,
+          'levels', r.cleared_levels,
+          'oranges', r.total_oranges
+        )
+        order by r.ord
+      )
+      from (
+        select
+          nickname,
+          cleared_levels,
+          total_oranges,
+          rank() over (order by total_oranges desc) as rank,
+          row_number() over (order by total_oranges desc, nickname asc) as ord
+        from public.player_saves
+        where total_oranges > 0
+      ) as r
+      where r.ord <= 500
+    ),
+    '[]'::jsonb
+  );
+$$;
+
+grant execute on function public.list_orange_leaderboard() to anon, authenticated;
+
 -- 查看祝福墙：
 -- select nickname, birthday_message, cleared_levels, total_oranges, updated_at
 --   from public.player_saves
 --  where birthday_message is not null
 --  order by updated_at desc;
 -- 或：select * from public.list_birthday_wishes();
+-- 橙子榜：select * from public.list_orange_leaderboard();

@@ -7,6 +7,7 @@ import { MuteButton } from './MuteButton';
 import { unlockAudio } from '../utils/audioManager';
 import { AccountSyncModal } from './AccountSyncModal';
 import { WishWallModal } from './WishWallModal';
+import { OrangeLeaderboardModal } from './OrangeLeaderboardModal';
 import { emojiSafeStyle } from '../utils/emojiSafe';
 
 const DEV_UNLOCK_ALL_LEVELS = false;
@@ -37,6 +38,7 @@ export const LevelSelectScreen: React.FC = () => {
   } = useGameStore();
   const [accountOpen, setAccountOpen] = useState(false);
   const [wishWallOpen, setWishWallOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
 
   useEffect(() => {
     if (status === 'level_select' && !accountNickname && !adminMode) {
@@ -92,13 +94,25 @@ export const LevelSelectScreen: React.FC = () => {
               >
                 💌留言墙
               </button>
+              <button
+                type="button"
+                onClick={() => setLeaderboardOpen(true)}
+                className="px-2.5 h-9 rounded-lg border border-white/85 font-bold shadow-sm active:scale-95 leading-none text-white"
+                style={{
+                  background: 'linear-gradient(135deg, #3a9fc4, #45b896)',
+                  fontSize: 24
+                }}
+                title="橙子排行榜"
+              >
+                🍊排行榜
+              </button>
               {accountNickname && (
                 <button
                   type="button"
                   onClick={() => setAccountOpen(true)}
-                  className="px-2.5 h-9 rounded-lg bg-white/80 border border-white/85 font-bold shadow-sm active:scale-95 max-w-[9rem] truncate leading-none"
+                  className="h-9 w-[2em] min-w-[2em] max-w-[2em] px-0 rounded-lg bg-white/80 border border-white/85 font-bold shadow-sm active:scale-95 truncate leading-none text-center shrink-0"
                   style={{ color: FRESH.text, fontSize: 25 }}
-                  title="账号详情"
+                  title={accountNickname}
                 >
                   {accountNickname}
                 </button>
@@ -237,6 +251,7 @@ export const LevelSelectScreen: React.FC = () => {
 
       <AccountSyncModal open={accountOpen} detailsOnly onClose={() => setAccountOpen(false)} />
       <WishWallModal open={wishWallOpen} onClose={() => setWishWallOpen(false)} />
+      <OrangeLeaderboardModal open={leaderboardOpen} onClose={() => setLeaderboardOpen(false)} />
     </div>
   );
 };

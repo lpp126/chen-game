@@ -5,6 +5,7 @@ import { unlockAudio } from '../utils/audioManager';
 import { getHomeCoverUrl, isHomeCoverReady, prefetchHomeCover } from '../utils/homeCoverCache';
 import { AccountSyncModal } from './AccountSyncModal';
 import { WishWallModal } from './WishWallModal';
+import { OrangeLeaderboardModal } from './OrangeLeaderboardModal';
 import { emojiSafeStyle } from '../utils/emojiSafe';
 
 /** 750×1334 设计稿：slogan 约在 y≈1218，按钮底边与其留空 */
@@ -19,6 +20,7 @@ export const HomeScreen: React.FC = () => {
   const [error, setError] = useState('');
   const [loginOpen, setLoginOpen] = useState(false);
   const [wishWallOpen, setWishWallOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [coverSrc, setCoverSrc] = useState<string | null>(() => getHomeCoverUrl());
   const [coverReady, setCoverReady] = useState(() => isHomeCoverReady());
 
@@ -89,23 +91,42 @@ export const HomeScreen: React.FC = () => {
         />
       )}
 
-      <button
-        type="button"
-        onClick={() => setWishWallOpen(true)}
-        aria-disabled={!coverReady}
-        className={`absolute top-4 right-3.5 z-30 flex items-center gap-1.5 px-3 h-9 rounded-full border border-white/70 text-[22px] font-bold text-white active:scale-95 transition-transform ${
+      <div
+        className={`absolute top-4 right-3.5 z-30 flex flex-row items-center gap-2 ${
           coverReady ? '' : 'opacity-30 pointer-events-none'
         }`}
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,179,71,0.92), rgba(255,140,66,0.92))',
-          boxShadow: '0 5px 14px rgba(255,140,66,0.32)'
-        }}
       >
-        <span className="text-[26px]" style={emojiSafeStyle} aria-hidden>
-          💌
-        </span>
-        留言墙
-      </button>
+        <button
+          type="button"
+          onClick={() => setLeaderboardOpen(true)}
+          aria-disabled={!coverReady}
+          className="flex items-center gap-1.5 px-3 h-9 rounded-full border border-white/70 text-[22px] font-bold text-white active:scale-95 transition-transform"
+          style={{
+            background: 'linear-gradient(135deg, rgba(58,159,196,0.94), rgba(69,184,150,0.94))',
+            boxShadow: '0 5px 14px rgba(58,159,196,0.32)'
+          }}
+        >
+          <span className="text-[24px]" style={emojiSafeStyle} aria-hidden>
+            🍊
+          </span>
+          排行榜
+        </button>
+        <button
+          type="button"
+          onClick={() => setWishWallOpen(true)}
+          aria-disabled={!coverReady}
+          className="flex items-center gap-1.5 px-3 h-9 rounded-full border border-white/70 text-[22px] font-bold text-white active:scale-95 transition-transform"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255,179,71,0.92), rgba(255,140,66,0.92))',
+            boxShadow: '0 5px 14px rgba(255,140,66,0.32)'
+          }}
+        >
+          <span className="text-[26px]" style={emojiSafeStyle} aria-hidden>
+            💌
+          </span>
+          留言墙
+        </button>
+      </div>
 
       <button
         type="button"
@@ -183,6 +204,7 @@ export const HomeScreen: React.FC = () => {
 
       <AccountSyncModal open={loginOpen} required onClose={() => setLoginOpen(false)} />
       <WishWallModal open={wishWallOpen} onClose={() => setWishWallOpen(false)} />
+      <OrangeLeaderboardModal open={leaderboardOpen} onClose={() => setLeaderboardOpen(false)} />
     </div>
   );
 };

@@ -386,6 +386,8 @@ export const Level4StackGame: React.FC = () => {
           }
 
           let minTop = BASE_SURFACE_Y;
+          /** 仅已落稳积木的最高点，用于过线判定（避免下落中的块把高度顶过目标线） */
+          let settledMinTop = BASE_SURFACE_Y;
           let stableBodies = 0;
           let dynamicBodies = 0;
           let settledReleasedBodies = 0;
@@ -441,6 +443,7 @@ export const Level4StackGame: React.FC = () => {
               }
             } else if (meta?.settled) {
               minTop = Math.min(minTop, body.bounds.min.y);
+              settledMinTop = Math.min(settledMinTop, body.bounds.min.y);
               settledReleasedBodies += 1;
               if (!body.isStatic && body.speed <= STABLE_SPEED) stableBodies += 1;
             }
@@ -492,14 +495,25 @@ export const Level4StackGame: React.FC = () => {
 
             for (const body of carriedBodies) {
               Matter.Body.setPosition(body, { x: body.position.x + baseDeltaX, y: body.position.y });
+              // 接盘平移后消掉横向冲量，避免“已落稳却永远 allStable=false”
+              const id = body.plugin.blockId;
+              const meta = id ? placedMetaRef.current[id] : undefined;
+              if (meta?.settled) {
+                Matter.Body.setVelocity(body, { x: 0, y: 0 });
+              }
             }
           }
 
           const safeTop = Number.isFinite(minTop) ? minTop : BASE_SURFACE_Y;
-          const progress = releasedBodies.length > 0 ? clamp(((BASE_SURFACE_Y - safeTop) / (BASE_SURFACE_Y - GOAL_LINE_Y)) * 100, 0, 100) : 0;
+          const progressTop = settledReleasedBodies > 0 ? settledMinTop : safeTop;
+          const progress =
+            releasedBodies.length > 0
+              ? clamp(((BASE_SURFACE_Y - progressTop) / (BASE_SURFACE_Y - GOAL_LINE_Y)) * 100, 0, 100)
+              : 0;
           setHeightPercent(progress);
 
-          const passedLine = releasedBodies.length >= 4 && safeTop <= GOAL_LINE_Y;
+          // 过线以已落稳堆高为准；结算不再强依赖 allStable（移动接盘会持续产生微速度）
+          const passedLine = settledReleasedBodies >= 4 && settledMinTop <= GOAL_LINE_Y;
           const allSettled = releasedBodies.length > 0 && settledReleasedBodies === releasedBodies.length;
           const allStable = dynamicBodies > 0 && stableBodies >= Math.max(1, dynamicBodies - 1);
           const noBlocksLeft = usedCountRef.current >= TOTAL_BLOCKS && !activeBodyIdRef.current;
@@ -516,15 +530,15 @@ export const Level4StackGame: React.FC = () => {
             triggerHeightFail();
           }
 
-          if (!finishedRef.current && passedLine && allSettled && allStable && !hasCollapsedRef.current) {
+          if (!finishedRef.current && passedLine && allSettled && !hasCollapsedRef.current && !failedRef.current) {
             if (stableStartRef.current === null) stableStartRef.current = now;
-            if (now - stableStartRef.current >= 2000) {
+            if (now - stableStartRef.current >= 1000) {
               finishedRef.current = true;
               playWin();
               const stars = collapseCountRef.current === 0 && usedCountRef.current <= 12 ? 3 : usedCountRef.current <= 16 ? 2 : 1;
               completeLevel({ stars, orangesCollected: stars, orangeTotal: 3 });
             }
-          } else if (!passedLine || !allSettled || !allStable) {
+          } else if (!passedLine || !allSettled) {
             stableStartRef.current = null;
           }
         }
