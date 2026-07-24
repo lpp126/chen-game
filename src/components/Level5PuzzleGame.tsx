@@ -85,10 +85,25 @@ export const Level5PuzzleGame: React.FC = () => {
   const refDragRef = useRef<{ ox: number; oy: number; startX: number; startY: number } | null>(null);
 
   const trayPieces = useMemo(
-    () => pieces.filter((p) => !slots.includes(p.id) && drag?.pieceId !== p.id),
-    [pieces, slots, drag]
+    () => pieces.filter((p) => !slots.includes(p.id)),
+    [pieces, slots]
   );
   const placedCount = useMemo(() => slots.filter(Boolean).length, [slots]);
+
+  const dragRef = useRef<DragState | null>(null);
+  const dragListenersRef = useRef<{
+    move: (e: PointerEvent) => void;
+    up: (e: PointerEvent) => void;
+  } | null>(null);
+
+  const clearDragListeners = useCallback(() => {
+    const cur = dragListenersRef.current;
+    if (!cur) return;
+    window.removeEventListener('pointermove', cur.move);
+    window.removeEventListener('pointerup', cur.up);
+    window.removeEventListener('pointercancel', cur.up);
+    dragListenersRef.current = null;
+  }, []);
 
   const succeed = useCallback(() => {
     if (finishRef.current) return;
@@ -100,6 +115,7 @@ export const Level5PuzzleGame: React.FC = () => {
   }, [completeLevel, elapsed]);
 
   const resetBoard = useCallback(() => {
+    clearDragListeners();
     const seed = buildPieces();
     const rots: Record<string, Rotation> = {};
     seed.forEach((p) => {
@@ -111,13 +127,14 @@ export const Level5PuzzleGame: React.FC = () => {
     setSlots(Array(TOTAL).fill(null));
     setRotations(rots);
     setDrag(null);
+    dragRef.current = null;
     setRefPos(REF_DEFAULT);
     setElapsed(0);
     setCompleted(false);
     finishRef.current = false;
     startRef.current = Date.now();
     pointerDownRef.current = null;
-  }, []);
+  }, [clearDragListeners]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -131,6 +148,8 @@ export const Level5PuzzleGame: React.FC = () => {
     }, 250);
     return () => window.clearInterval(timer);
   }, [isActive, gameplayPaused, completed]);
+
+  useEffect(() => () => clearDragListeners(), [clearDragListeners]);
 
   const checkWin = useCallback(
     (nextSlots: (string | null)[], nextRots: Record<string, Rotation>) => {
@@ -163,18 +182,27 @@ export const Level5PuzzleGame: React.FC = () => {
     return toStagePoint(stage, clientX, clientY);
   };
 
-  useEffect(() => {
-    if (!isActive || !drag || gameplayPaused || completed) return;
-
-    const onMove = (event: PointerEvent) => {
-      const pt = stagePoint(event.clientX, event.clientY);
-      setDrag((cur) => (cur ? { ...cur, x: pt.x, y: pt.y } : cur));
-    };
-
-    const onUp = (event: PointerEvent) => {
-      const cur = drag;
+  const finishPieceDrag = useCallback(
+    (event: PointerEvent) => {
+      const cur = dragRef.current;
+      clearDragListeners();
+      dragRef.current = null;
       setDrag(null);
-      if (!cur || gameplayPaused || completed) return;
+      if (!cur || gameplayPaused || completed) {
+        pointerDownRef.current = null;
+        return;
+      }
+
+      // 未真正拖动就被系统取消：中止；已拖动则按松手落点处理
+      if (event.type === 'pointercancel') {
+        const down = pointerDownRef.current;
+        const moved =
+          !!down && Math.hypot(event.clientX - down.x, event.clientY - down.y) > 12;
+        if (!moved) {
+          pointerDownRef.current = null;
+          return;
+        }
+      }
 
       const down = pointerDownRef.current;
       pointerDownRef.current = null;
@@ -214,20 +242,12 @@ export const Level5PuzzleGame: React.FC = () => {
         checkWin(next, rotations);
         return next;
       });
-    };
-
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
-    };
-  }, [isActive, drag, gameplayPaused, completed, slots, rotations, checkWin]);
+    },
+    [clearDragListeners, gameplayPaused, completed, slots, rotations, checkWin]
+  );
 
   const beginRefDrag = (event: React.PointerEvent) => {
-    if (gameplayPaused || completed || drag) return;
+    if (gameplayPaused || completed || dragRef.current) return;
     event.preventDefault();
     event.stopPropagation();
     const pt = stagePoint(event.clientX, event.clientY);
@@ -237,7 +257,11 @@ export const Level5PuzzleGame: React.FC = () => {
       startX: event.clientX,
       startY: event.clientY
     };
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    try {
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {
+      // ignore
+    }
   };
 
   const onRefPointerMove = (event: React.PointerEvent) => {
@@ -266,11 +290,45 @@ export const Level5PuzzleGame: React.FC = () => {
   };
 
   const beginDrag = (pieceId: string, fromSlot: number | null, event: React.PointerEvent) => {
-    if (gameplayPaused || completed || refDragRef.current) return;
+    if (gameplayPaused || completed || refDragRef.current || dragRef.current) return;
     event.preventDefault();
+    event.stopPropagation();
+
+    const el = event.currentTarget as HTMLElement;
+    try {
+      el.setPointerCapture(event.pointerId);
+    } catch {
+      // 个别 WebView 不支持 capture，仍靠 window 监听兜底
+    }
+
     const pt = stagePoint(event.clientX, event.clientY);
+    const next: DragState = { pieceId, fromSlot, x: pt.x, y: pt.y };
     pointerDownRef.current = { pieceId, x: event.clientX, y: event.clientY, t: Date.now(), fromSlot };
-    setDrag({ pieceId, fromSlot, x: pt.x, y: pt.y });
+    dragRef.current = next;
+    setDrag(next);
+
+    // 同步挂监听：避免等 React effect；源节点卸载时也不会丢事件
+    clearDragListeners();
+    const onMove = (e: PointerEvent) => {
+      if (!dragRef.current) return;
+      e.preventDefault();
+      const p = stagePoint(e.clientX, e.clientY);
+      const updated = { ...dragRef.current, x: p.x, y: p.y };
+      dragRef.current = updated;
+      setDrag(updated);
+    };
+    const onUp = (e: PointerEvent) => {
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+      finishPieceDrag(e);
+    };
+    dragListenersRef.current = { move: onMove, up: onUp };
+    window.addEventListener('pointermove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
   };
 
   const renderPieceFace = (piece: PieceData, size: number, rot: Rotation, extraClass = '') => (
@@ -329,7 +387,7 @@ export const Level5PuzzleGame: React.FC = () => {
         <div
           ref={boardRef}
           className="relative rounded-3xl border-[3px] border-white/90 bg-white/40 shadow-lg shrink-0"
-          style={{ width: BOARD_SIZE, height: BOARD_SIZE, marginTop: 28 }}
+          style={{ width: BOARD_SIZE, height: BOARD_SIZE, marginTop: 28, touchAction: 'none' }}
         >
           <div className="absolute inset-0 grid grid-cols-4 grid-rows-4">
             {Array.from({ length: TOTAL }, (_, slot) => {
@@ -342,10 +400,11 @@ export const Level5PuzzleGame: React.FC = () => {
                   className="border border-white/60 bg-white/25 flex items-center justify-center"
                   style={{ width: CELL, height: CELL }}
                 >
-                  {piece && !isDraggingHere && (
+                  {piece && (
                     <button
                       type="button"
-                      className="p-0 active:scale-95 touch-none"
+                      className={`p-0 touch-none select-none ${isDraggingHere ? 'opacity-0' : 'active:scale-95'}`}
+                      style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
                       onPointerDown={(e) => beginDrag(piece.id, slot, e)}
                     >
                       {renderPieceFace(piece, CELL - 8, rotations[piece.id] ?? 0)}
@@ -361,19 +420,28 @@ export const Level5PuzzleGame: React.FC = () => {
           拖入任意格 · 点击已放碎片可旋转
         </p>
 
-        {/* 大托盘 */}
-        <div className="flex-1 min-h-0 w-full overflow-y-auto rounded-3xl border-2 border-white/70 bg-white/45 px-3 py-3">
+        {/* 大托盘：保留源节点占位，避免个别机型卸载按钮后 pointercancel */}
+        <div
+          className="flex-1 min-h-0 w-full overflow-y-auto overscroll-contain rounded-3xl border-2 border-white/70 bg-white/45 px-3 py-3"
+          style={{ touchAction: 'pan-y' }}
+        >
           <div className="grid grid-cols-4 gap-3 justify-items-center">
-            {trayPieces.map((piece) => (
-              <button
-                key={piece.id}
-                type="button"
-                className="p-1 rounded-xl bg-white/85 border-2 border-white shadow-sm active:scale-95 touch-none"
-                onPointerDown={(e) => beginDrag(piece.id, null, e)}
-              >
-                {renderPieceFace(piece, TRAY_PIECE, rotations[piece.id] ?? 0)}
-              </button>
-            ))}
+            {trayPieces.map((piece) => {
+              const isDragging = drag?.pieceId === piece.id;
+              return (
+                <button
+                  key={piece.id}
+                  type="button"
+                  className={`p-1 rounded-xl bg-white/85 border-2 border-white shadow-sm touch-none select-none ${
+                    isDragging ? 'opacity-0' : 'active:scale-95'
+                  }`}
+                  style={{ touchAction: 'none', WebkitUserSelect: 'none' }}
+                  onPointerDown={(e) => beginDrag(piece.id, null, e)}
+                >
+                  {renderPieceFace(piece, TRAY_PIECE, rotations[piece.id] ?? 0)}
+                </button>
+              );
+            })}
           </div>
           {trayPieces.length === 0 && !drag && (
             <p className="text-center text-base text-[#5a7a92] py-8">托盘已空 · 点棋盘上碎片旋转调整</p>
