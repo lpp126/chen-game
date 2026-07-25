@@ -331,7 +331,7 @@ export const Level3JumpGame: React.FC = () => {
           playWin();
           const elapsed = (Date.now() - levelStart.current) / 1000;
           const collectedStars = stars.filter((s) => s.collected).length;
-          const rank = collectedStars >= 10 && elapsed <= 120 ? 3 : collectedStars >= 5 ? 2 : 1;
+          const rank = collectedStars >= 10 && elapsed <= 90 ? 3 : collectedStars >= 5 ? 2 : 1;
           completeLevel({ stars: rank, orangesCollected: orangeCount, orangeTotal: 5 });
         }
 

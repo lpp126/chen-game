@@ -83,7 +83,7 @@ export const Level10PetCareGame: React.FC = () => {
   const [totalHintsUsed, setTotalHintsUsed] = useState(0);
 
   const starsPreview = useMemo(() => {
-    if (totalHintsUsed === 0 && taps <= 12) return 3;
+    if (totalHintsUsed === 0 && taps <= 11) return 3;
     if (totalHintsUsed <= 3 && taps <= 18) return 2;
     return 1;
   }, [taps, totalHintsUsed]);

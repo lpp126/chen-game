@@ -535,7 +535,7 @@ export const Level4StackGame: React.FC = () => {
             if (now - stableStartRef.current >= 1000) {
               finishedRef.current = true;
               playWin();
-              const stars = collapseCountRef.current === 0 && usedCountRef.current <= 12 ? 3 : usedCountRef.current <= 16 ? 2 : 1;
+              const stars = collapseCountRef.current === 0 && usedCountRef.current <= 11 ? 3 : usedCountRef.current <= 16 ? 2 : 1;
               completeLevel({ stars, orangesCollected: stars, orangeTotal: 3 });
             }
           } else if (!passedLine || !allSettled) {

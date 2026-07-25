@@ -32,8 +32,8 @@ export const Level8MorningRunGame: React.FC = () => {
   const [msg, setMsg] = useState('点选柱子再点目标，大盘不能压小盘');
 
   const disks = STAGES[stage]?.disks ?? 3;
-  // 3 盘最优 7 + 4 盘最优 15 ≈ 22；宽松给星
-  const starsPreview = useMemo(() => (moves <= 26 ? 3 : moves <= 36 ? 2 : 1), [moves]);
+  // 3 盘最优 7 + 4 盘最优 15 ≈ 22；三星 ≤23
+  const starsPreview = useMemo(() => (moves <= 23 ? 3 : moves <= 36 ? 2 : 1), [moves]);
 
   const succeed = useCallback(() => {
     setEnded(true);

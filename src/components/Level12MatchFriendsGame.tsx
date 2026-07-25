@@ -53,7 +53,7 @@ export const Level12MatchFriendsGame: React.FC = () => {
   const starsPreview = useMemo(() => {
     const f = totalFlips + flips;
     if (failed) return f <= 70 ? 1 : 0;
-    if (f <= 55) return 3;
+    if (f <= 52) return 3;
     if (f <= 70) return 2;
     return 1;
   }, [failed, flips, totalFlips]);
@@ -62,7 +62,7 @@ export const Level12MatchFriendsGame: React.FC = () => {
     setEnded(true);
     playWin();
     const f = totalFlips + flips;
-    const stars = f <= 55 ? 3 : f <= 70 ? 2 : 1;
+    const stars = f <= 52 ? 3 : f <= 70 ? 2 : 1;
     window.setTimeout(() => completeLevel({ stars, orangesCollected: stars, orangeTotal: 3 }), 280);
   }, [completeLevel, flips, totalFlips]);
 
