@@ -82,17 +82,26 @@ export const Level10PetCareGame: React.FC = () => {
   const [usedHints, setUsedHints] = useState(0);
   const [totalHintsUsed, setTotalHintsUsed] = useState(0);
 
-  const starsPreview = useMemo(() => {
-    if (totalHintsUsed === 0 && taps <= 11) return 3;
-    if (totalHintsUsed <= 3 && taps <= 18) return 2;
+  const starsFor = useCallback((tapCount: number, hints: number) => {
+    if (hints === 0 && tapCount <= 11) return 3;
+    if (hints <= 3 && tapCount <= 18) return 2;
     return 1;
-  }, [taps, totalHintsUsed]);
+  }, []);
 
-  const succeedAll = useCallback(() => {
-    setEnded(true);
-    playWin();
-    window.setTimeout(() => completeLevel({ stars: starsPreview, orangesCollected: starsPreview, orangeTotal: 3 }), 280);
-  }, [completeLevel, starsPreview]);
+  const starsPreview = useMemo(
+    () => starsFor(taps, totalHintsUsed),
+    [taps, totalHintsUsed, starsFor]
+  );
+
+  const succeedAll = useCallback(
+    (finalTaps: number, finalHints: number) => {
+      setEnded(true);
+      playWin();
+      const stars = starsFor(finalTaps, finalHints);
+      window.setTimeout(() => completeLevel({ stars, orangesCollected: stars, orangeTotal: 3 }), 280);
+    },
+    [completeLevel, starsFor]
+  );
 
   useEffect(() => {
     if (!isActive) return;
@@ -119,25 +128,21 @@ export const Level10PetCareGame: React.FC = () => {
     if (!isActive || gameplayPaused || ended) return;
     playToggle();
     setHintCell(null);
-    setTaps((t) => t + 1);
-    setGrid((prev) => {
-      const next = toggle(prev, i);
-      if (allOff(next)) {
-        playCorrect();
-        setPIdx((pi) => {
-          if (pi + 1 >= PUZZLES.length) {
-            setMsg('全部熄灭！');
-            window.setTimeout(succeedAll, 350);
-            return pi;
-          }
-          setMsg(`第 ${pi + 1} 关完成！`);
-          const ni = pi + 1;
-          window.setTimeout(() => loadPuzzle(ni), 500);
-          return ni;
-        });
-      }
-      return next;
-    });
+    const nextTaps = taps + 1;
+    setTaps(nextTaps);
+    const next = toggle(grid, i);
+    setGrid(next);
+    if (!allOff(next)) return;
+    playCorrect();
+    if (pIdx + 1 >= PUZZLES.length) {
+      setMsg('全部熄灭！');
+      window.setTimeout(() => succeedAll(nextTaps, totalHintsUsed), 350);
+      return;
+    }
+    setMsg(`第 ${pIdx + 1} 关完成！`);
+    const ni = pIdx + 1;
+    setPIdx(ni);
+    window.setTimeout(() => loadPuzzle(ni), 500);
   };
 
   const showHint = () => {

@@ -32,14 +32,19 @@ export const Level8MorningRunGame: React.FC = () => {
   const [msg, setMsg] = useState('点选柱子再点目标，大盘不能压小盘');
 
   const disks = STAGES[stage]?.disks ?? 3;
-  // 3 盘最优 7 + 4 盘最优 15 ≈ 22；三星 ≤23
-  const starsPreview = useMemo(() => (moves <= 23 ? 3 : moves <= 36 ? 2 : 1), [moves]);
+  // 3 盘最优 7 + 4 盘最优 15 ≈ 22；三星 ≤23（按通关后的最终步数）
+  const starsForMoves = useCallback((m: number) => (m <= 23 ? 3 : m <= 36 ? 2 : 1), []);
+  const starsPreview = useMemo(() => starsForMoves(moves), [moves, starsForMoves]);
 
-  const succeed = useCallback(() => {
-    setEnded(true);
-    playWin();
-    window.setTimeout(() => completeLevel({ stars: starsPreview, orangesCollected: starsPreview, orangeTotal: 3 }), 280);
-  }, [completeLevel, starsPreview]);
+  const succeed = useCallback(
+    (finalMoves: number) => {
+      setEnded(true);
+      playWin();
+      const stars = starsForMoves(finalMoves);
+      window.setTimeout(() => completeLevel({ stars, orangesCollected: stars, orangeTotal: 3 }), 280);
+    },
+    [completeLevel, starsForMoves]
+  );
 
   useEffect(() => {
     if (!isActive) return;
@@ -72,29 +77,29 @@ export const Level8MorningRunGame: React.FC = () => {
       return;
     }
     playPop();
-    setPegs((prev) => {
-      const next = clonePegs(prev);
-      next[pi].push(next[selected!].pop()!);
-      if (isWin(next, disks)) {
-        playCorrect();
-        if (stage + 1 >= STAGES.length) {
-          setMsg('全部移到了右侧！');
-          window.setTimeout(succeed, 400);
-        } else {
-          const ns = stage + 1;
-          setMsg(`第 ${stage + 1} 关完成！进入 ${STAGES[ns].disks} 盘挑战`);
-          window.setTimeout(() => {
-            setStage(ns);
-            setPegs(clonePegs(STAGES[ns].start));
-            setSelected(null);
-            setMsg(`第 ${ns + 1} 关：${STAGES[ns].disks} 盘 · 点选柱子再点目标`);
-          }, 500);
-        }
-      }
-      return next;
-    });
-    setMoves((m) => m + 1);
+    const nextMoves = moves + 1;
+    const nextPegs = clonePegs(pegs);
+    nextPegs[pi].push(nextPegs[selected].pop()!);
+    setPegs(nextPegs);
+    setMoves(nextMoves);
     setSelected(null);
+
+    if (isWin(nextPegs, disks)) {
+      playCorrect();
+      if (stage + 1 >= STAGES.length) {
+        setMsg('全部移到了右侧！');
+        window.setTimeout(() => succeed(nextMoves), 400);
+      } else {
+        const ns = stage + 1;
+        setMsg(`第 ${stage + 1} 关完成！进入 ${STAGES[ns].disks} 盘挑战`);
+        window.setTimeout(() => {
+          setStage(ns);
+          setPegs(clonePegs(STAGES[ns].start));
+          setSelected(null);
+          setMsg(`第 ${ns + 1} 关：${STAGES[ns].disks} 盘 · 点选柱子再点目标`);
+        }, 500);
+      }
+    }
   };
 
   if (!isActive) return null;
